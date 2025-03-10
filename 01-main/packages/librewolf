@@ -1,0 +1,10 @@
+DEFVER=1
+CODENAMES_SUPPORTED="bullseye bookworm focal jammy noble"
+# Todo: Mint repos too for
+# uma una vanessa vera
+GPG_KEY_URL="https://deb.librewolf.net/keyring.gpg"
+APT_REPO_URL="https://deb.librewolf.net ${UPSTREAM_CODENAME} main"
+APT_REPO_OPTIONS="arch=amd64"
+PRETTY_NAME="LibreWolf"
+WEBSITE="https://librewolf.net/"
+SUMMARY="An independent fork of Firefox, with the primary goals of privacy, security and user freedom."

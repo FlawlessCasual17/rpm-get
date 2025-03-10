@@ -1,0 +1,155 @@
+deb-get (0.3.9-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 14 Jun 2023 09:37:23 +0100
+
+deb-get (0.3.8-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 26 Apr 2023 11:08:04 +0100
+
+deb-get (0.3.7-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Fri, 10 Feb 2023 11:59:20 +0000
+
+deb-get (0.3.6-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Mon, 19 Sep 2022 10:13:04 +0100
+
+deb-get (0.3.5-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Sat, 20 Aug 2022 00:52:54 +0100
+
+deb-get (0.3.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Fri, 29 Jul 2022 11:07:33 +0100
+
+deb-get (0.3.3-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Sat, 23 Jul 2022 11:35:17 +0100
+
+deb-get (0.3.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 20 Jul 2022 09:19:20 +0100
+
+deb-get (0.3.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Fri, 15 Jul 2022 12:46:31 +0100
+
+deb-get (0.3.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 06 Jul 2022 11:28:18 +0100
+
+deb-get (0.2.9-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Sun, 29 May 2022 15:52:14 +0100
+
+deb-get (0.2.8-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Sat, 28 May 2022 16:29:37 +0100
+
+deb-get (0.2.7-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Thu, 26 May 2022 13:38:53 +0100
+
+deb-get (0.2.6-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 11 May 2022 01:40:31 +0100
+
+deb-get (0.2.5-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Mon, 09 May 2022 17:57:30 +0100
+
+deb-get (0.2.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Wimpress <code@wimpress.io>  Fri, 06 May 2022 14:49:35 +0100
+
+deb-get (0.2.3-1) unstable; urgency=medium
+
+  * Added Ubuntu Make, InSync, TeamViewer and Tixati.
+
+ -- Martin Wimpress <code@wimpress.io>  Mon, 02 May 2022 11:28:36 +0100
+
+deb-get (0.2.2-1) unstable; urgency=medium
+
+  * Added Modern Unix apps and support for Zorin OS
+
+ -- Martin Wimpress <code@wimpress.io>  Tue, 26 Apr 2022 13:20:37 +0100
+
+deb-get (0.2.1-1) unstable; urgency=medium
+
+  * Improved Ubuntu derivative support, bug fixes and new app support.
+
+ -- Martin Wimpress <code@wimpress.io>  Tue, 26 Apr 2022 10:23:48 +0100
+
+deb-get (0.2.0-1) unstable; urgency=medium
+
+  * Add support for Launchpad PPAs.
+
+ -- Martin Wimpress <code@wimpress.io>  Thu, 21 Apr 2022 23:21:49 +0100
+
+deb-get (0.1.5-1) unstable; urgency=medium
+
+  * Correct the get-deb typos and improve 'get-deb list'.
+
+ -- Martin Wimpress <code@wimpress.io>  Thu, 21 Apr 2022 11:13:00 +0100
+
+deb-get (0.1.4-1) unstable; urgency=medium
+
+  * Added lots more apps.
+
+ -- Martin Wimpress <code@wimpress.io>  Thu, 21 Apr 2022 02:56:57 +0100
+
+deb-get (0.1.3-1) unstable; urgency=medium
+
+  * Fix the self installer/updater.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 20 Apr 2022 22:16:45 +0100
+
+deb-get (0.1.2-1) unstable; urgency=medium
+
+  * Add support for dropbox, powershell and onlyoffice-desktopeditors.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 20 Apr 2022 22:07:44 +0100
+
+deb-get (0.1.1-1) unstable; urgency=medium
+
+  * Add self installer.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 20 Apr 2022 15:54:07 +0100
+
+deb-get (0.1.0-1) unstable; urgency=medium
+
+  * Initial beta release.
+
+ -- Martin Wimpress <code@wimpress.io>  Wed, 20 Apr 2022 15:25:44 +0000

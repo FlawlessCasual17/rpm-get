@@ -1,0 +1,12 @@
+debian/files
+debian/*debhelper*
+debian/deb-get*
+
+rejections.md
+
+# Nohup template downloaded with gut
+
+### Nohup ###
+nohup.out
+
+.gut
