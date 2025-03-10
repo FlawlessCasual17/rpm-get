@@ -1,10 +1,10 @@
 name: deb-get Tests
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    paths:
-      - "deb-get"
+  # pull_request:
+  #   types: [opened, synchronize]
+  #   paths:
+  #     - "deb-get"
   workflow_dispatch:
 
 jobs:

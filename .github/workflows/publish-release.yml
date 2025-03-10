@@ -1,8 +1,9 @@
 name: Build 🏗️ and Publish 📦️
 
 on:
-  push:
-    tags: ['*']
+  # push:
+  #   tags: ['*']
+  workflow_dispatch:
 
 jobs:
   create-release:
