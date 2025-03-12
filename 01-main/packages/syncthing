@@ -1,6 +1,0 @@
-DEFVER=1
-GPG_KEY_URL="https://syncthing.net/release-key.gpg"
-APT_REPO_URL="https://apt.syncthing.net/ syncthing stable"
-PRETTY_NAME="Syncthing"
-WEBSITE="https://syncthing.net/"
-SUMMARY="Continuous file synchronization program."

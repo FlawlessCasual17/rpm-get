@@ -1,9 +1,0 @@
-DEFVER=1
-get_github_releases "bvaisvil/zenith" "latest"
-if [ "${ACTION}" != "prettylist" ]; then
-    URL=$(grep -m 1 "browser_download_url.*${HOST_ARCH}\.deb\"" "${CACHE_FILE}" | cut -d'"' -f4)
-    VERSION_PUBLISHED=$(echo "${URL}" | cut -d'_' -f2)
-fi
-PRETTY_NAME="Zenith"
-WEBSITE="https://github.com/bvaisvil/zenith"
-SUMMARY="Sort of like 'top' or 'htop' but with zoom-able charts."
