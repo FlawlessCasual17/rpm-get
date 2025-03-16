@@ -1,4 +1,4 @@
-https://raw.githubusercontent.com/wimpysworld/deb-get/main/01-main
+https://raw.githubusercontent.com/wimpysworld/rpm-get/main/01-main
 1password
 activitywatch
 agena
@@ -46,7 +46,7 @@ cudatext
 cw-tail
 dbeaver-ce
 deadbeef-static
-deborah
+rpmorah
 deltachat-desktop
 deskcut
 deskreen
@@ -160,7 +160,7 @@ lsd
 ludo
 lutris
 mailspring
-makedeb
+makerpm
 manuskript
 master-pdf-editor-5
 mattermost-desktop
