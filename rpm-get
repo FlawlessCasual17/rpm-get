@@ -417,10 +417,7 @@ function info_rpm() {
         (rpm)
             printf '%s\n' "${PRETTY_NAME}"
             printf '  %s:\t%s\n' Package "${APP}" Repository "${APP_SRC}" Updater rpm Installed "${INSTALLED}" Architecture "${ARCHS_SUPPORTED}" Repository "${APT_REPO_URL}" Website "${WEBSITE}" Summary "${SUMMARY}";;
-        (ppa)
-            printf '%s\n' "${PRETTY_NAME}"
-            printf '  %s:\t%s\n' Package "${APP}" Repository "${APP_SRC}" Updater rpm Installed "${INSTALLED}" Architecture "${ARCHS_SUPPORTED}" Launchpad "${PPA}" Website "${WEBSITE}" Summary "${SUMMARY}";;
-    esac
+        esac
 }
 
 function validate_rpm() {
@@ -1626,7 +1623,7 @@ case "${ACTION}" in
     (csv) ACTION=csvlist ;;
 esac
 
-case "${ACTION}" in (update|upgrade|show|reinstall|install|remove|purge|search|list|prettylist|csvlist|fix-installed)
+case "${ACTION}" in (update|upgrade|show|reinstall|install|remove|search|list|prettylist|csvlist|fix-installed)
     populate_apps
     mapfile -t APP_CONFLICTS < <(printf '%s\n' "${APPS[@]##*/}" | uniq --repeated)
     mapfile -t LOCAL_APPS < <(printf '%s\n' "${APPS[@]}" | grep "^99-local/")
