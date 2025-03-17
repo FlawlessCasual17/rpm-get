@@ -10,3 +10,13 @@ rejections.md
 nohup.out
 
 .gut
+
+### Ruby ###
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
