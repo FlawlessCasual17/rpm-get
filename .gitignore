@@ -20,3 +20,4 @@ nohup.out
 /pkg/
 /spec/reports/
 /tmp/
+sorbet/rbi/gems/
