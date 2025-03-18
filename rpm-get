@@ -1,7 +1,9 @@
 #!/usr/bin/env ruby
+# typed: true
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'faraday'
 
 # rpm-get version
 VERSION = '0.0.1'
@@ -13,25 +15,25 @@ ETC_DIR = '/etc/rpm-get'
 HOST_CPU = retrieve_cpu
 # user-agent
 USER_AGENT = "Mozilla/5.0 (X11; Linux #{HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+# For GitHub API
+RPMGET_TOKEN = ENV['RPMGET_TOKEN']
 
 # Will be used to store either sudo or doas
 elevate = ''
-
 # Will be used for storing the command used
-command = ''
-
+cmd = ''
 # set a github auth token in RPMGET_TOKEN to get bigger rate limit
 header_auth = ''
 # header_param = ''
 
-RPMGET_TOKEN = ENV['RPMGET_TOKEN']
-
+# Check if the enviromental variable "RPMGET_TOKEN" exists.
 if ENV.include?('RPMGET_TOKEN')
   header_auth = "Authorization: token #{RPMGET_TOKEN}"
   # header_param = '--header'
 end
 
 # Called whenever rpm-get is called without arguments.
+# @return [String]
 def usage
   <<~HELP
 
@@ -131,16 +133,16 @@ def retrieve_cpu
 end
 
 # Determines if rpm-get is running as root
-#  and checks if sudo or doas is available.
+#  and checks if `sudo` or `doas` is available.
 def elevate_privs
   if Process.euid.zero?
-    puts 'Already running as root.'
+    elevate = ''
   elsif which('sudo')
     elevate = 'sudo'
   elsif which('doas')
     elevate = 'doas'
   else
-    puts "rpm-get requires `sudo` or `doas` for '#{command}', neither were found."
+    puts "rpm-get requires `sudo` or `doas` for '#{cmd}', neither were found."
   end
 end
 
@@ -157,12 +159,39 @@ def which(cmd)
   false # Return false if not found
 end
 
+# Creates the cache dir.
 def create_cache_dir
-  fake_cache_dir = '/var/cache/get-rpm'
-  if Dir.exist?(fake_cache_dir)
-    puts "Found #{fake_cache_dir}"
-    FileUtils.mv(fake_cache_dir, CACHE_DIR)
-  end
+  # fake_cache_dir = '/var/cache/get-rpm'
+  # if Dir.exist?(fake_cache_dir)
+  #   puts "Found #{fake_cache_dir}"
+  #   FileUtils.mv(fake_cache_dir, CACHE_DIR)
+  # end
   Dir.mkdir(CACHE_DIR)
   File.chmod(755, CACHE_DIR)
+end
+
+# Creates the etc dir.
+def create_etc_dir
+  Dir.mkdir(ETC_DIR)
+  File.chmod(755, ETC_DIR)
+end
+
+# Takes a url and cleans it of unnecessary data.
+# @return [String]
+def clean_url(url)
+  uri = URI(url)
+
+  # Follow redirects manually
+  response = Net::HTTP.get_response(uri)
+  response['User-Agent'] = USER_AGENT
+
+  while response.is_a(Net::HTTPRedirection)
+    location = response['location']
+    uri = URI(location)
+    response = Net::HTTP.get_response(uri)
+  end
+
+  final_url = response.uri.to_s
+  # Return the final URL
+  "#{final_url}".sub!(/\.rpm.*/, '.rpm')
 end
