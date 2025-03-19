@@ -4,6 +4,8 @@ debian/deb-get*
 
 rejections.md
 
+/ruby-bin/
+
 # Nohup template downloaded with gut
 
 ### Nohup ###
@@ -20,4 +22,4 @@ nohup.out
 /pkg/
 /spec/reports/
 /tmp/
-sorbet/rbi/gems/
+/sorbet/rbi/gems/

@@ -1,4 +1,6 @@
 bundler: true
-
 plugins:
   - solargraph-rbs
+reporters:
+  - typecheck
+  - sorbet
