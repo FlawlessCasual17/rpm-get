@@ -173,7 +173,7 @@ def elevate_privs
   elsif which('doas')
     elevate = 'doas'
   else
-    puts "rpm-get requires `sudo` or `doas` for '#{cmd}', neither were found."
+    puts "rpm-get requires `sudo` or `doas` for '#{app}', neither were found."
   end
 end
 
