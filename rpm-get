@@ -3,7 +3,9 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require 'faraday'
+require 'typhoeus'
+
+## CONSTANT fields
 
 # rpm-get version
 VERSION = '0.0.1'
@@ -17,19 +19,47 @@ HOST_CPU = retrieve_cpu
 USER_AGENT = "Mozilla/5.0 (X11; Linux #{HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 # For GitHub API
 RPMGET_TOKEN = ENV['RPMGET_TOKEN']
+## CONSTANT fields
 
-# Will be used to store either sudo or doas
+## Regular fields
+
+# Stores either the sudo or doas command.
 elevate = ''
-# Will be used for storing the command used
-cmd = ''
+# Stores the command used
+action = ARGV[0]
+# Stores the app the user requests
+app = ''
+# Stores options passed to the script
+options = ['']
 # set a github auth token in RPMGET_TOKEN to get bigger rate limit
-header_auth = ''
+header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMGET_TOKEN']}"
 # header_param = ''
+## Regular fields
 
-# Check if the enviromental variable "RPMGET_TOKEN" exists.
-if ENV.include?('RPMGET_TOKEN')
-  header_auth = "Authorization: token #{RPMGET_TOKEN}"
-  # header_param = '--header'
+# Define the user agent for Typhoeus
+Typhoeus::Config.user_agent = USER_AGENT
+
+# TODO: comeback to this method later
+#
+# Parses arguments passed to the
+# ruby script from the command line.
+def parse_cli_args
+  # ARGV.each do |arg|
+  #   #
+  # end
+
+  # TODO: Add more cases for this switch (case) statement
+  #
+  # rubocop:disable Style/MethodCallWithoutArgsParentheses
+  case action
+  when 'version'
+    retrieve_version()
+  when 'help', ''
+    usage()
+  when 'install'
+    # TODO: add an install related method here.
+  end
+  # rubocop:enable Style/MethodCallWithoutArgsParentheses
 end
 
 # Called whenever rpm-get is called without arguments.
@@ -118,6 +148,7 @@ version
 end
 
 # Called whenever rpm-get is called with the version option.
+# @return [String]
 def retrieve_version = puts "rpm-get version: #{version}"
 
 # Gets the CPU architecture in [String] format
@@ -178,20 +209,30 @@ end
 
 # Takes a url and cleans it of unnecessary data.
 # @return [String]
-def clean_url(url)
-  uri = URI(url)
+def clean_url(url, trim_url: false)
+  # Create a HEAD request with follow_location enabled
+  request = Typhoeus::Request.new(
+    url,
+    method: :head,
+    followlocation: true,
+    maxredirs: 10
+  )
 
-  # Follow redirects manually
-  response = Net::HTTP.get_response(uri)
-  response['User-Agent'] = USER_AGENT
+  # Execute the request
+  response = request.run
 
-  while response.is_a(Net::HTTPRedirection)
-    location = response['location']
-    uri = URI(location)
-    response = Net::HTTP.get_response(uri)
-  end
+  # Get the effective URL (final URL after following redirects)
+  final_url = response.effective_url
 
-  final_url = response.uri.to_s
-  # Return the final URL
-  "#{final_url}".sub!(/\.rpm.*/, '.rpm')
+  # Will return the untrimmed url if
+  # a value for `trim_url` is not passed.
+  return final_url unless trim_url
+
+  # Trim any .rpm* patterns to just .rpm
+  final_url.sub(/\.rpm.*/, '.rpm')
 end
+
+# def get_github_releases
+#   type = 'github'
+#   cache_file = "#{CACHE_DIR}"
+# end
