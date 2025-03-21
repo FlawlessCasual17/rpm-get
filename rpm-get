@@ -8,31 +8,31 @@ require 'typhoeus'
 ## CONSTANT fields
 
 # rpm-get version
-VERSION = '0.0.1'
+@VERSION = '0.0.1'
 # Cache directory
-CACHE_DIR = '/var/cache/get-rpm'
+@CACHE_DIR = '/var/cache/get-rpm'
 # etc directory
-ETC_DIR = '/etc/rpm-get'
+@ETC_DIR = '/etc/rpm-get'
 # CPU architecture
-HOST_CPU = retrieve_cpu
+@HOST_CPU = retrieve_cpu
 # user-agent
-USER_AGENT = "Mozilla/5.0 (X11; Linux #{HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+@USER_AGENT = "Mozilla/5.0 (X11; Linux #{HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 # For GitHub API
-RPMGET_TOKEN = ENV['RPMGET_TOKEN']
+@RPMGET_TOKEN = ENV['RPMGET_TOKEN']
 ## CONSTANT fields
 
 ## Regular fields
 
 # Stores either the sudo or doas command.
-elevate = ''
+@elevate = ''
 # Stores the command used
-action = ARGV[0]
+@action = ARGV[0]
 # Stores the app the user requests
-app = ''
+@app = ''
 # Stores options passed to the script
-options = ['']
+@options = ['']
 # set a github auth token in RPMGET_TOKEN to get bigger rate limit
-header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMGET_TOKEN']}"
+@header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMGET_TOKEN']}"
 # header_param = ''
 ## Regular fields
 
