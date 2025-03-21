@@ -5,6 +5,7 @@ source 'https://rubygems.org'
 # Specify your gem's dependencies in rpm-get.gemspec
 gemspec
 
+gem 'down'
 gem 'faraday'
 gem 'sorbet', group: :development
 gem 'sorbet-runtime'
