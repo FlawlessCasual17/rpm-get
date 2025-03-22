@@ -8,36 +8,36 @@ require 'typhoeus'
 ## CONSTANT fields
 
 # rpm-get version
-@VERSION = '0.0.1'
+$VERSION = '0.0.1'
 # Cache directory
-@CACHE_DIR = '/var/cache/get-rpm'
+$CACHE_DIR = '/var/cache/get-rpm'
 # etc directory
-@ETC_DIR = '/etc/rpm-get'
+$ETC_DIR = '/etc/rpm-get'
 # CPU architecture
-@HOST_CPU = retrieve_cpu
+$HOST_CPU = retrieve_cpu
 # user-agent
-@USER_AGENT = "Mozilla/5.0 (X11; Linux #{HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+$USER_AGENT = "Mozilla/5.0 (X11; Linux #{$HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 # For GitHub API
-@RPMGET_TOKEN = ENV['RPMGET_TOKEN']
+$RPMGET_TOKEN = ENV['RPMGET_TOKEN']
 ## CONSTANT fields
 
 ## Regular fields
 
 # Stores either the sudo or doas command.
-@elevate = ''
+$elevate = ''
 # Stores the command used
-@action = ARGV[0]
+$action = ARGV[0]
 # Stores the app the user requests
-@app = ''
+$app = ''
 # Stores options passed to the script
-@options = ['']
-# set a github auth token in RPMGET_TOKEN to get bigger rate limit
-@header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMGET_TOKEN']}"
-# header_param = ''
+$options = ['']
+# Set a GitHub auth token in RPMGET_TOKEN to get bigger rate limit
+$header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMGET_TOKEN']}"
+# $header_param = ''
 ## Regular fields
 
 # Define the user agent for Typhoeus
-Typhoeus::Config.user_agent = USER_AGENT
+Typhoeus::Config.user_agent = $USER_AGENT
 
 # TODO: comeback to this method later
 #
@@ -51,7 +51,7 @@ def parse_cli_args
   # TODO: Add more cases for this switch (case) statement
   #
   # rubocop:disable Style/MethodCallWithoutArgsParentheses
-  case action
+  case $action
   when 'version'
     retrieve_version()
   when 'help', ''
@@ -153,7 +153,7 @@ def retrieve_version = puts "rpm-get version: #{version}"
 
 # Gets the CPU architecture in [String] format
 # @return [String]
-def retrieve_cpu
+def get_cpu
   if defined?(RUBY_PLATFORM)
     String(RUBY_PLATFORM).sub('-linux', '')
   elsif which('arch')
@@ -167,13 +167,13 @@ end
 #  and checks if `sudo` or `doas` is available.
 def elevate_privs
   if Process.euid.zero?
-    elevate = ''
+    $elevate = ''
   elsif which('sudo')
-    elevate = 'sudo'
+    $elevate = 'sudo'
   elsif which('doas')
-    elevate = 'doas'
+    $elevate = 'doas'
   else
-    puts "rpm-get requires `sudo` or `doas` for '#{app}', neither were found."
+    puts "rpm-get requires `sudo` or `doas` for '#{$app}', neither were found."
   end
 end
 
@@ -232,7 +232,8 @@ def clean_url(url, trim_url: false)
   final_url.sub(/\.rpm.*/, '.rpm')
 end
 
-# def get_github_releases
-#   type = 'github'
-#   cache_file = "#{CACHE_DIR}"
-# end
+# Gets the package releases from GitHub
+def get_github_releases
+  @type = 'github'
+  cache_file = "#{$CACHE_DIR}/#{$app}.json"
+end
