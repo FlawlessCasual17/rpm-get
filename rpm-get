@@ -239,10 +239,10 @@ def get_github_releases
   $type = 'github'
   cache_file = "#{$CACHE_DIR}/#{$app}.json"
 
-  # Lets try to cache the github releases for 1 hour to prevent API rate limiting.
+  # Try to cache the GitHub releases for 1 hour to prevent API rate limiting.
   # https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
 
-  if (($action == 'install' || $action == 'update') && !File.exist?(CACHE_FILE))
+  if ($action == 'install' || $action == 'update') && !File.exist?(cache_file)
     printc "Updating #{cache_file}", 'info'
     # Add code for downloading the releases here
   end
@@ -262,18 +262,18 @@ def printc(msg, msg_type)
 
   case msg_type
   when 'info'
-    printf "  [#{@green}INFO#{@reset}]: #{msg}\n"
+    printf "  [#{@GREEN}INFO#{@RESET}]: #{msg}\n"
   when 'progress'
-    printf "  [#{@blue}PROGRESS#{@reset}]: #{msg}\n"
+    printf "  [#{@BLUE}PROGRESS#{@RESET}]: #{msg}\n"
   when 'warn'
-    printf "  [#{@yellow}[WARNING]:#{@reset}]: #{msg}\n"
+    printf "  [#{@YELLOW}[WARNING]:#{@RESET}]: #{msg}\n"
   when 'error'
-    printf "  [#{@red}[ERROR]:#{@reset}]: #{msg}\n"
+    printf "  [#{@RED}[ERROR]:#{@RESET}]: #{msg}\n"
   when 'fatal'
-    printf "  [#{@magenta}[FATAL]:#{@reset}]: #{msg}\n"
+    printf "  [#{@MAGENTA}[FATAL]:#{@RESET}]: #{msg}\n"
     exit 1
   else
-    printf "  [#{@grey}[UNKNOWN]:#{@reset}]: #{msg}\n"
+    printf "  [#{@GREY}[UNKNOWN]:#{@RESET}]: #{msg}\n"
   end
 end
 # rubocop:enable Metrics/MethodLength
