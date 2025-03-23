@@ -41,8 +41,8 @@ $header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMG
 # Define the user agent for Typhoeus
 Typhoeus::Config.user_agent = $USER_AGENT
 
-# TODO: comeback to this method later
-#
+# TODO: comeback to the below method later.
+
 # Parses arguments passed to the
 # ruby script from the command line.
 def parse_cli_args
@@ -242,7 +242,7 @@ def get_github_releases
   # Lets try to cache the github releases for 1 hour to prevent API rate limiting.
   # https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
 
-  if (($action == 'install' || $action == update) && !File.exist?(CACHE_FILE))
+  if (($action == 'install' || $action == 'update') && !File.exist?(CACHE_FILE))
     printc "Updating #{cache_file}", 'info'
     # Add code for downloading the releases here
   end
