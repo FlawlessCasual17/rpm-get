@@ -16,7 +16,8 @@ $ETC_DIR = '/etc/rpm-get'
 # CPU architecture
 $HOST_CPU = retrieve_cpu
 # user-agent
-$USER_AGENT = "Mozilla/5.0 (X11; Linux #{$HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+$USER_AGENT = "Mozilla/5.0 (X11; Linux #{$HOST_CPU}) AppleWebKit/537.36" +
+  " (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 # For GitHub API
 $RPMGET_TOKEN = ENV['RPMGET_TOKEN']
 ## CONSTANT fields
@@ -51,15 +52,17 @@ def parse_cli_args
   # end
 
   # TODO: Add more cases for this switch (case) statement
-  #
+
   # rubocop:disable Style/MethodCallWithoutArgsParentheses
   case $action
   when 'version'
-    retrieve_version()
+    get_version()
   when 'help', ''
     usage()
-  when 'install'
-    # TODO: add an install related method here.
+  when 'install', 'update'
+    # TODO: add an install related method here
+  when 'search'
+    # TODO: add a search related method here
   end
   # rubocop:enable Style/MethodCallWithoutArgsParentheses
 end
@@ -68,6 +71,8 @@ end
 # @return [String]
 def usage
   <<~HELP
+
+rpm-get version #{$VERSION}
 
 Usage
 
@@ -149,11 +154,11 @@ version
   HELP
 end
 
-# Called whenever rpm-get is called with the version option.
+# Return the current version of `rpm-get`.
 # @return [String]
-def retrieve_version = puts "rpm-get version: #{version}"
+def get_version = puts "rpm-get version: #{$VERSION}"
 
-# Gets the CPU architecture in [String] format
+# Returns the CPU architecture of the system.
 # @return [String]
 def get_cpu
   if defined?(RUBY_PLATFORM)
@@ -182,10 +187,15 @@ end
 # Checks if a command is available
 # @return [TrueClass, FalseClass]
 def which(cmd)
+  # Declares a new array based on PATHEXT or an empty array.
   exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(File::PATH_SEPARATOR) : ['']
+  # Use a for loop to check each path in PATH
   ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+    # Use a for loop to check each extension
     exts.each do |ext|
+      # Join the path and command (along with the extension)
       exe = File.join(path, "#{cmd}#{ext}")
+      # Return true if the command is found.
       return true if File.executable?(exe) && !File.directory?(exe)
     end
   end
@@ -209,10 +219,10 @@ def create_etc_dir
   File.chmod(755, ETC_DIR)
 end
 
-# Takes a url and cleans it of unnecessary data.
+# Takes a URL and cleans it of unnecessary data.
 # @return [String]
 def clean_url(url, trim_url: false)
-  # Create a HEAD request with follow_location enabled
+  # Create a HEAD request type.
   request = Typhoeus::Request.new(
     url,
     method: :head,
@@ -226,7 +236,7 @@ def clean_url(url, trim_url: false)
   # Get the effective URL (final URL after following redirects)
   final_url = response.effective_url
 
-  # Will return the untrimmed url if
+  # Will return the untrimmed URL if
   # a value for `trim_url` is not passed.
   return final_url unless trim_url
 
@@ -266,14 +276,14 @@ def printc(msg, msg_type)
   when 'progress'
     printf "  [#{@BLUE}PROGRESS#{@RESET}]: #{msg}\n"
   when 'warn'
-    printf "  [#{@YELLOW}[WARNING]:#{@RESET}]: #{msg}\n"
+    printf "  [#{@YELLOW}WARNING#{@RESET}]: #{msg}\n"
   when 'error'
-    printf "  [#{@RED}[ERROR]:#{@RESET}]: #{msg}\n"
+    printf "  [#{@RED}ERROR#{@RESET}]: #{msg}\n"
   when 'fatal'
-    printf "  [#{@MAGENTA}[FATAL]:#{@RESET}]: #{msg}\n"
+    printf "  [#{@MAGENTA}FATAL#{@RESET}]: #{msg}\n"
     exit 1
   else
-    printf "  [#{@GREY}[UNKNOWN]:#{@RESET}]: #{msg}\n"
+    printf "  [#{@GREY}UNKNOWN#{@RESET}]: #{msg}\n"
   end
 end
 # rubocop:enable Metrics/MethodLength
