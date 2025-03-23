@@ -3,3 +3,6 @@ Naming/AccessorMethodName:
 
 Style/GlobalVars:
   Enabled: false
+
+Naming/VariableName:
+  Enabled: false

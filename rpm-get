@@ -31,6 +31,8 @@ $action = ARGV[0]
 $app = ''
 # Stores options passed to the script
 $options = ['']
+# Stores the type of package request
+$type = ''
 # Set a GitHub auth token in RPMGET_TOKEN to get bigger rate limit
 $header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: token #{ENV['RPMGET_TOKEN']}"
 # $header_param = ''
@@ -234,6 +236,44 @@ end
 
 # Gets the package releases from GitHub
 def get_github_releases
-  @type = 'github'
+  $type = 'github'
   cache_file = "#{$CACHE_DIR}/#{$app}.json"
+
+  # Lets try to cache the github releases for 1 hour to prevent API rate limiting.
+  # https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+
+  if (($action == 'install' || $action == update) && !File.exist?(CACHE_FILE))
+    printc "Updating #{cache_file}", 'info'
+    # Add code for downloading the releases here
+  end
 end
+
+# rubocop:disable Metrics/MethodLength
+# Prints coloured text to the terminal
+def printc(msg, msg_type)
+  # Define colours here
+  @RED = "\e[31m"
+  @GREEN = "\e[32m"
+  @YELLOW = "\e[33m"
+  @BLUE = "\e[34m"
+  @MAGENTA = "\e[35m"
+  @GREY = "\e[37m"
+  @RESET = "\e[0m"
+
+  case msg_type
+  when 'info'
+    printf "  [#{@green}INFO#{@reset}]: #{msg}\n"
+  when 'progress'
+    printf "  [#{@blue}PROGRESS#{@reset}]: #{msg}\n"
+  when 'warn'
+    printf "  [#{@yellow}[WARNING]:#{@reset}]: #{msg}\n"
+  when 'error'
+    printf "  [#{@red}[ERROR]:#{@reset}]: #{msg}\n"
+  when 'fatal'
+    printf "  [#{@magenta}[FATAL]:#{@reset}]: #{msg}\n"
+    exit 1
+  else
+    printf "  [#{@grey}[UNKNOWN]:#{@reset}]: #{msg}\n"
+  end
+end
+# rubocop:enable Metrics/MethodLength
