@@ -6,3 +6,6 @@ Style/GlobalVars:
 
 Naming/VariableName:
   Enabled: false
+
+Metrics/MethodLength:
+  Enabled: false
