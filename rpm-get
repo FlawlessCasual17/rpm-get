@@ -245,6 +245,7 @@ def clean_url(url, trim_url: false)
   final_url.sub(/\.rpm.*/, '.rpm')
 end
 
+# TODO: Start testing this method in a separate file.
 # Gets the package releases from GitHub
 def get_github_releases
   $type = 'github'
