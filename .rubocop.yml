@@ -18,3 +18,9 @@ Style/StringConcatenation:
 
 Layout/MultilineOperationIndentation:
   Enabled: false
+
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false

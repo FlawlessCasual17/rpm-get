@@ -8,7 +8,7 @@ require 'ruby-progressbar'
 $CACHE_DIR = File.join(Dir.home, '.cache/rpm-get')
 $USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 
-$header_auth = "Authorization: Bearer #{ENV['RPMGET_TOKEN']}"
+$header_auth = "Bearer #{ENV['RPMGET_TOKEN']}"
 
 # Creates the cache dir.
 def create_cache_dir = Dir.mkdir($CACHE_DIR)

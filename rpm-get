@@ -5,6 +5,7 @@
 require 'fileutils'
 require 'typhoeus'
 require 'down'
+require 'tty-progressbar'
 require 'json'
 
 ## CONSTANT fields
@@ -12,7 +13,7 @@ require 'json'
 # rpm-get version
 $VERSION = '0.0.1'
 # Cache directory
-$CACHE_DIR = '/var/cache/get-rpm'
+$CACHE_DIR = File.join(Dir.home, '.cache/rpm-get')
 # etc directory
 $ETC_DIR = '/etc/rpm-get'
 # CPU architecture
@@ -27,6 +28,8 @@ $USER_AGENT = "Mozilla/5.0 (X11; Linux #{$HOST_CPU}) AppleWebKit/537.36 (KHTML, 
 $elevate = ''
 # Stores the command used
 $action = ARGV[0]
+# The creator of the app requested
+$author = ''
 # Stores the app the user requests
 $app = ''
 # Stores options passed to the script
@@ -51,19 +54,18 @@ def parse_cli_args
   # end
 
   # TODO: Add more cases for this switch (case) statement
-
-  # rubocop:disable Style/MethodCallWithoutArgsParentheses
   case $action
   when 'version'
-    get_version()
+    puts "rpm-get version: #{$VERSION}"
   when 'help', ''
     usage()
   when 'install', 'update'
     # TODO: add an install related method here
+    get_github_releases()
   when 'search'
     # TODO: add a search related method here
+    # search()
   end
-  # rubocop:enable Style/MethodCallWithoutArgsParentheses
 end
 
 # Called whenever rpm-get is called without arguments.
@@ -154,10 +156,6 @@ version
   HELP
 end
 
-# Return the current version of `rpm-get`.
-# @return [String]
-def get_version = puts "rpm-get version: #{$VERSION}"
-
 # Returns the CPU architecture of the system.
 # @return [String]
 def get_cpu
@@ -186,7 +184,7 @@ def elevate_privs
 end
 
 # Checks if a command is available
-# @return [TrueClass, FalseClass]
+# @return [Boolean]
 def which(cmd)
   # Declares a new array based on PATHEXT or an empty array.
   exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(File::PATH_SEPARATOR) : ['']
@@ -204,21 +202,10 @@ def which(cmd)
 end
 
 # Creates the cache dir.
-def create_cache_dir
-  # fake_cache_dir = '/var/cache/get-rpm'
-  # if Dir.exist?(fake_cache_dir)
-  #   puts "Found #{fake_cache_dir}"
-  #   FileUtils.mv(fake_cache_dir, CACHE_DIR)
-  # end
-  Dir.mkdir(CACHE_DIR)
-  File.chmod(755, CACHE_DIR)
-end
+def create_cache_dir = FileUtils.mkdir_p($CACHE_DIR)
 
 # Creates the etc dir.
-def create_etc_dir
-  Dir.mkdir(ETC_DIR)
-  File.chmod(755, ETC_DIR)
-end
+def create_etc_dir = FileUtils.mkdir_p($ETC_DIR)
 
 # Takes a URL and cleans it of unnecessary data.
 # @return [String]
@@ -245,39 +232,67 @@ def clean_url(url, trim_url: false)
   final_url.sub(/\.rpm.*/, '.rpm')
 end
 
-# TODO: Start testing this method in a separate file.
 # Gets the package releases from GitHub
 def get_github_releases
   $type = 'github'
-  cache_file = "#{$CACHE_DIR}/#{$app}.json"
+  c_file_path = "#{$CACHE_DIR}/#{$app}_cache.json"
   base_url = 'https://api.github.com/repos'
-  url = "#{base_url}/author/#{$app}/releases/latest"
-  # Try to cache the GitHub releases for 1 hour to prevent API rate limiting.
-  # https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+  url = "#{base_url}/#{$author}/#{$app}/releases/latest"
+  progress_bar = nil
+  format = '[:bar] :percent TOTAL::total_byte :current/:total bytes ETA::eta :rate bytes/s'
 
-  if $action == 'install' || $action == 'update'
-    if !File.exist?(cache_file)
-      printc "Updating #{cache_file}", 'info'
-      # Add code for downloading the releases here
-      begin
-        Down.download(
-          url,
-          destination: cache_file,
-          headers: {
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0',
-            'Authorization' => $header_auth
-          }
-        )
-      rescue StandardError => e
-        printc "Failed to update #{cache_file}", 'warn'
-        printc e, 'error'
+  # Ensure cache directory exists
+  create_cache_dir() unless Dir.exist?($CACHE_DIR)
+  # If cache file exists, skip
+  return if File.exist?(c_file_path)
+
+  # Notify the user
+  printc "Updating #{c_file_path}", 'info'
+  printc "Downloading JSON cache of #{$app} to #{c_file_path}", 'progress'
+
+  # Try downloading, or raise an error
+  begin
+    Down.download(
+      url,
+      destination: c_file_path,
+      headers: {
+        'User-Agent' => $USER_AGENT,
+        'Authorization' => $header_auth
+      },
+      content_length_proc: lambda do |content_length|
+        # If `content_length` is null, change the format
+        content_length.nil? &&
+          format = format.sub('TOTAL::total_byte', '').sub('/:total', '')
+
+        bar = TTY::ProgressBar.new(format, total: content_length, head: '>')
+        bar.resize(50)
+        progress_bar = bar
+      end,
+      progress_proc: lambda do |progress|
+        raise TypeError if progress.nil?
+
+        progress_bar&.advance(progress - progress_bar.current)
       end
-    end
+    )
+
+    printc 'Download complete!', 'progress', true
+  rescue StandardError => e
+    printc "Failed to update cache for #{$app}", 'error', true
+    printc e.detailed_message, 'error'
   end
+
+  # If the GitHub API rate limit is exceeded, tell the user
+  return unless rate_limited(parse_json(c_file_path, ['message']))
+
+  printc 'API rate limit exceeded!', 'warn'
+  printc "Deleting #{c_file_path}", 'info'
+  FileUtils.remove_file(c_file_path)
 end
 
+# rubocop: disable Style/OptionalBooleanParameter
+
 # Prints colored text to the terminal
-def printc(msg, msg_type)
+def printc(msg, msg_type, new_line = false)
   # Define colours here
   @RED = "\e[31m"
   @GREEN = "\e[32m"
@@ -287,25 +302,29 @@ def printc(msg, msg_type)
   @GREY = "\e[37m"
   @RESET = "\e[0m"
 
+  # Add a new line if `new_line` is true
+  cr = new_line ? "\n" : ''
+
   case msg_type
   when 'info'
-    printf "  [#{@GREEN}INFO#{@RESET}]: #{ms}\n"
+    printf "#{cr}  [#{@GREEN}INFO#{@RESET}]: #{msg}\n"
   when 'progress'
-    printf "  [#{@BLUE}PROGRESS#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@BLUE}PROGRESS#{@RESET}]: #{msg}\n"
   when 'warn'
-    printf "  [#{@YELLOW}WARNING#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@YELLOW}WARNING#{@RESET}]: #{msg}\n"
   when 'error'
-    printf "  [#{@RED}ERROR#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@RED}ERROR#{@RESET}]: #{msg}\n"
   when 'fatal'
-    printf "  [#{@MAGENTA}FATAL#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@MAGENTA}FATAL#{@RESET}]: #{msg}\n"
     exit 1
   else
-    printf "  [#{@GREY}UNKNOWN#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@GREY}UNKNOWN#{@RESET}]: #{msg}\n"
   end
 end
 
 # Retrieves JSON content from a file,
 # then parses it into a Ruby object.
+# @return [String]
 def parse_json(path, json_path)
   raise TypeError unless path.is_a?(String)
   raise TypeError unless json_path.is_a?(Array)
@@ -317,3 +336,8 @@ def parse_json(path, json_path)
   # dig is a real method. See https://docs.ruby-lang.org/en/3.0/dig_methods_rdoc.html
   json_path.reduce(data) { |acc, key| acc&.dig(key) }
 end
+# rubocop: enable Style/OptionalBooleanParameter
+
+# Tells if GitHub API rate limit is exceeded
+# @return [Boolean]
+def rate_limited(feedback_msg) = feedback_msg.include?('API rate limit exceeded')
