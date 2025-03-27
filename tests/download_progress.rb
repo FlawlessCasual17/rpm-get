@@ -13,7 +13,8 @@ file_path = "/home/kris/.cache/#{file_name}"
 progress_bar = nil
 
 # formatting
-format_str = "    Downloading \"#{file_name}\" [:bar] :percent TOTAL::total_byte :current/:total bytes ETA::eta :rate/s   "
+format_str = "    Downloading \"#{file_name}\" [:bar] :percent TOTAL::total_byte " +
+  ':current/:total bytes ETA::eta :rate bytes/s   '
 
 # Download the file with progress tracking
 Down.download(
@@ -22,8 +23,8 @@ Down.download(
   content_length_proc: lambda do |content_length|
     raise TypeError if content_length.nil?
 
-    bar = TTY::ProgressBar.new(format_str, total: content_length)
-    bar.resize(30)
+    bar = TTY::ProgressBar.new(format_str, total: content_length, head: '>')
+    bar.resize(50)
     progress_bar = bar
   end,
   progress_proc: lambda do |progress|
