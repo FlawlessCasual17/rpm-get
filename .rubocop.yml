@@ -9,3 +9,6 @@ Naming/VariableName:
 
 Metrics/MethodLength:
   Enabled: false
+
+Style/MethodCallWithoutArgsParentheses:
+  Enabled: false

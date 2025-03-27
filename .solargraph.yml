@@ -1,3 +1,2 @@
 bundler: true
-plugins:
-  - solargraph-rbs
+
