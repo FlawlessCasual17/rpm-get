@@ -12,3 +12,9 @@ Metrics/MethodLength:
 
 Style/MethodCallWithoutArgsParentheses:
   Enabled: false
+
+Style/StringConcatenation:
+  Enabled: false
+
+Layout/MultilineOperationIndentation:
+  Enabled: false
