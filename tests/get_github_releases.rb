@@ -15,49 +15,53 @@ def create_cache_dir = Dir.mkdir($CACHE_DIR)
 
 # Gets the package releases from GitHub
 def get_github_releases
-  cache_file = "#{$CACHE_DIR}/test.json"
+  url = 'https://api.github.com/repos/peazip/Peazip/releases/latest'
+  c_file_path = "#{$CACHE_DIR}/test.json"
+
+  progress_bar = nil # Initialize outside the block
+  format = '[:bar] :percent TOTAL::total_byte :current/:total bytes ETA::eta :rate bytes/s'
 
   # Ensure cache directory exists
-  Dir.mkdir($CACHE_DIR) unless Dir.exist?($CACHE_DIR)
+  create_cache_dir() unless Dir.exist?($CACHE_DIR)
 
-  if !File.exist?(cache_file)
-    printc "Updating #{cache_file}", 'info'
+  return if File.exist?(c_file_path)
 
-    total_size = 0
-    progressbar = nil  # Initialize outside the block
+  printc "Updating #{c_file_path}", 'info'
+  printc "Downloading JSON cache of app to #{c_file_path}", 'progress'
 
-    begin
-      Down.download(
-        'https://api.github.com/repos/peazip/Peazip/releases/latest',
-        destination: cache_file,
-        headers: {
-          'User-Agent' => $USER_AGENT,
-          'Authorization' => $header_auth
-        },
-        content_length_proc: lambda do |content_length|
-          if content_length
-            total_size = content_length
-            # Initialize progress bar with total file size
-            progressbar = TTY::ProgressBar.new(
-              'Downloading [:bar] :percent :eta',
-              total: total_size,
-              width: 40
-            )
-          end
-        end,
-        progress_proc: lambda do |progress|
-          progressbar&.advance(progress - progressbar.current)
-        end
-      )
-    rescue StandardError => e
-      printc "Failed to update #{cache_file}", 'warn'
-      printc "#{e}\n#{e.detailed_message}", 'error'
-    end
+  begin
+    Down.download(
+      url,
+      destination: c_file_path,
+      headers: {
+        'User-Agent' => $USER_AGENT,
+        'Authorization' => $header_auth
+      },
+      content_length_proc: lambda do |content_length|
+        # If `content_length` is null, change the format
+        content_length.nil? &&
+          format = format.sub('TOTAL::total_byte', '').sub('/:total', '')
+
+        bar = TTY::ProgressBar.new(format, total: content_length, head: '>')
+        bar.resize(50)
+        progress_bar = bar
+      end,
+      progress_proc: lambda do |progress|
+        raise TypeError if progress.nil?
+
+        progress_bar&.advance(progress - progress_bar.current)
+      end
+    )
+
+    printc 'Download complete!', 'progress', true
+  rescue StandardError => e
+    printc "Failed to update #{c_file_path}", 'warn', true
+    printc e.detailed_message, 'error'
   end
 end
 
 # Prints colored text to the terminal
-def printc(msg, msg_type)
+def printc(msg, msg_type, new_line = false)
   # Define colours here
   @RED = "\e[31m"
   @GREEN = "\e[32m"
@@ -67,20 +71,23 @@ def printc(msg, msg_type)
   @GREY = "\e[37m"
   @RESET = "\e[0m"
 
+  # Add a new line if `new_line` is true
+  cr = new_line ? "\n" : ''
+
   case msg_type
   when 'info'
-    printf "  [#{@GREEN}INFO#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@GREEN}INFO#{@RESET}]: #{msg}\n"
   when 'progress'
-    printf "  [#{@BLUE}PROGRESS#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@BLUE}PROGRESS#{@RESET}]: #{msg}\n"
   when 'warn'
-    printf "  [#{@YELLOW}WARNING#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@YELLOW}WARNING#{@RESET}]: #{msg}\n"
   when 'error'
-    printf "  [#{@RED}ERROR#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@RED}ERROR#{@RESET}]: #{msg}\n"
   when 'fatal'
-    printf "  [#{@MAGENTA}FATAL#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@MAGENTA}FATAL#{@RESET}]: #{msg}\n"
     exit 1
   else
-    printf "  [#{@GREY}UNKNOWN#{@RESET}]: #{msg}\n"
+    printf "#{cr}  [#{@GREY}UNKNOWN#{@RESET}]: #{msg}\n"
   end
 end
 

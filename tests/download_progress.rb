@@ -7,7 +7,7 @@ require 'tty-progressbar'
 # Define the URL and the destination file path
 url = 'http://ipv4.download.thinkbroadband.com/5MB.zip'
 file_name = url.split('/')[-1]
-file_path = "/home/kris/.cache/#{file_name}"
+file_path = File.join(Dir.home, ".cache/#{file_name}")
 
 # Initialize the progress bar
 progress_bar = nil
