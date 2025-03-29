@@ -17,7 +17,7 @@ $CACHE_DIR = File.join(Dir.home, '.cache/rpm-get')
 # etc directory
 $ETC_DIR = '/etc/rpm-get'
 # CPU architecture
-$HOST_CPU = retrieve_cpu
+$HOST_CPU = get_cpu
 # user-agent
 $USER_AGENT = "Mozilla/5.0 (X11; Linux #{$HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 ## CONSTANT fields
