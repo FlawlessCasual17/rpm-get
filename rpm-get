@@ -17,7 +17,7 @@ $CACHE_DIR = File.join(Dir.home, '.cache/rpm-get')
 # etc directory
 $ETC_DIR = '/etc/rpm-get'
 # CPU architecture
-$HOST_CPU = get_cpu
+$HOST_CPU = get_cpu()
 # user-agent
 $USER_AGENT = "Mozilla/5.0 (X11; Linux #{$HOST_CPU}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 ## CONSTANT fields
@@ -37,7 +37,7 @@ $options = ['']
 # Stores the type of package request
 $type = ''
 # Set a GitHub auth token in RPMGET_TOKEN to get bigger rate limit
-$header_auth = ENV.include?('RPMGET_TOKEN') && "Authorization: Bearer #{ENV['RPMGET_TOKEN']}"
+$header_auth = ENV.include?('RPMGET_TOKEN') && "Bearer #{ENV['RPMGET_TOKEN']}"
 # $header_param = ''
 ## Regular fields
 
