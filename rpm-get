@@ -321,6 +321,8 @@ def get_releases
   FileUtils.remove_file(c_file_path)
 end
 
+# TODO: Create a method for scrapping HTML content
+
 # rubocop: disable Style/OptionalBooleanParameter
 
 # Prints colored text to the terminal
@@ -383,3 +385,15 @@ end
 def rate_limited?(feedback_msg)
   feedback_msg.include?('API rate limit exceeded') || feedback_msg.include?('Retry later')
 end
+
+# TODO:
+# [ ] Add a method for downloading RPMs (or even files)
+# [ ] Add a method for prompting the user with an app's EULA
+# [ ] Add a method for installing RPMs
+# [ ] Add a method for uninstalling RPMs
+# [ ] Add a method for updating RPMs
+# [ ] Add a method for adding Copr/Zypper repos
+# [ ] Add a method for removing Copr/Zypper repos
+# [ ] Add a method for validating RPMs
+# [ ] Add a method for listing RPMs
+# [ ] Add a method for listing repos
