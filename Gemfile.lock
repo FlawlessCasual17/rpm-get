@@ -21,7 +21,7 @@ GEM
     ffi (1.17.1)
     ffi (1.17.1-x86_64-linux-gnu)
     json (2.10.2)
-    logger (1.6.6)
+    logger (1.7.0)
     net-http (0.6.0)
       uri
     public_suffix (6.0.1)
