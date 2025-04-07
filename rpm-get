@@ -356,6 +356,7 @@ def printc(msg, msg_type, new_line = false)
     printf "#{cr}  [#{@GREY}UNKNOWN#{@RESET}]: #{msg}\n"
   end
 end
+# rubocop: enable Style/OptionalBooleanParameter
 
 # Retrieves JSON content from a file,
 # then parses it into a Ruby object.
@@ -375,7 +376,6 @@ def parse_json(path, json_path)
   # @param [Object] key
   json_path.reduce(data) { |acc, key| acc&.dig(key) }
 end
-# rubocop: enable Style/OptionalBooleanParameter
 
 # Tells if GitHub API rate limit is exceeded
 # @param [String] feedback_msg
