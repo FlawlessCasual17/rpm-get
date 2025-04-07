@@ -1,2 +1,4 @@
 bundler: true
-
+reporters:
+  - typecheck
+  - require_not_found

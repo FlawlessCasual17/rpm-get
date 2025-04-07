@@ -29,15 +29,25 @@ $elevate = ''
 # Stores the command used
 $action = ARGV[0]
 # The creator of the app requested
-$author = ''
+$creator = ''
+# The organization of the app requested (GitLab only)
+$organization = ''
+# The project id of the app requested (GitLab only)
+$project_id = ''
 # Stores the app the user requests
 $app = ''
 # Stores options passed to the script
 $options = ['']
 # Stores the type of package request
 $type = ''
-# Set a GitHub auth token in RPMGET_TOKEN to get bigger rate limit
-$header_auth = ENV.include?('RPMGET_TOKEN') && "Bearer #{ENV['RPMGET_TOKEN']}"
+# Stores the progress bar
+$progress_bar = nil
+# progress bar format
+$format = '[:bar] :percent TOTAL::total_byte :current/:total bytes ETA::eta :rate bytes/s'
+# Set a GitHub auth token in GITHUB_TOKEN to avoid rate limit
+$gh_header_auth = ENV.include?('GITHUB_TOKEN') && "Bearer #{ENV['GITHUB_TOKEN']}"
+# Set a GitLab auth token in GITLAB_TOKEN to avoid rate limit
+$gl_header_auth = ENV.include?('GITLAB_TOKEN') && ENV['GITLAB_TOKEN']
 # $header_param = ''
 ## Regular fields
 
@@ -58,10 +68,10 @@ def parse_cli_args
   when 'version'
     puts "rpm-get version: #{$VERSION}"
   when 'help', ''
-    usage()
+    puts usage
   when 'install', 'update'
     # TODO: add an install related method here
-    get_github_releases()
+    get_releases()
   when 'search'
     # TODO: add a search related method here
     # search()
@@ -162,6 +172,7 @@ def get_cpu
   if defined?(RUBY_PLATFORM)
     String(RUBY_PLATFORM).sub('-linux', '')
   elsif which('arch')
+    # https://ruby-doc.org/3.4.1/String.html#method-i-chomp
     `arch`.chomp
   elsif which('uname')
     `uname -m`.chomp
@@ -184,13 +195,16 @@ def elevate_privs
 end
 
 # Checks if a command is available
+# @param [String] cmd
 # @return [Boolean]
 def which(cmd)
   # Declares a new array based on PATHEXT or an empty array.
   exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(File::PATH_SEPARATOR) : ['']
   # Use a for loop to check each path in PATH
+  # @param [String] path
   ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
     # Use a for loop to check each extension
+    # @param [String] ext
     exts.each do |ext|
       # Join the path and command (along with the extension)
       exe = File.join(path, "#{cmd}#{ext}")
@@ -208,6 +222,8 @@ def create_cache_dir = FileUtils.mkdir_p($CACHE_DIR)
 def create_etc_dir = FileUtils.mkdir_p($ETC_DIR)
 
 # Takes a URL and cleans it of unnecessary data.
+# @param [String] url
+# @param [Boolean] trim_url
 # @return [String]
 def clean_url(url, trim_url: false)
   # Create a HEAD request type.
@@ -232,14 +248,31 @@ def clean_url(url, trim_url: false)
   final_url.sub(/\.rpm.*/, '.rpm')
 end
 
-# Gets the package releases from GitHub
-def get_github_releases
-  $type = 'github'
+# Gets the releases from either GitHub or GitLab
+def get_releases
   c_file_path = "#{$CACHE_DIR}/#{$app}_cache.json"
-  base_url = 'https://api.github.com/repos'
-  url = "#{base_url}/#{$author}/#{$app}/releases/latest"
-  progress_bar = nil
-  format = '[:bar] :percent TOTAL::total_byte :current/:total bytes ETA::eta :rate bytes/s'
+  url = ''
+  headers = {}
+  feedback_msg = nil
+
+  case $type
+  when 'github'
+    base_url = 'https://api.github.com/repos'
+    url = "#{base_url}/#{$creator}/#{$app}/releases/latest"
+    headers = {
+      'User-Agent': $USER_AGENT,
+      'Authorization': $gh_header_auth
+    }
+    feedback_msg = parse_json(c_file_path, ['message'])
+  when 'gitlab'
+    base_url = 'https://gitlab.com/api/v4/projects'
+    url = "#{base_url}/#{$project_id}/releases/permalink/latest"
+    headers = {
+      'User-Agent': $USER_AGENT,
+      'PRIVATE-TOKEN': $gl_header_auth
+    }
+    feedback_msg = File.read(c_file_path)
+  end
 
   # Ensure cache directory exists
   create_cache_dir() unless Dir.exist?($CACHE_DIR)
@@ -255,23 +288,22 @@ def get_github_releases
     Down.download(
       url,
       destination: c_file_path,
-      headers: {
-        'User-Agent' => $USER_AGENT,
-        'Authorization' => $header_auth
-      },
+      headers: headers,
+      # @param [Integer] content_length
       content_length_proc: lambda do |content_length|
         # If `content_length` is null, change the format
         content_length.nil? &&
-          format = format.sub('TOTAL::total_byte', '').sub('/:total', '')
+          $format = $format.sub('TOTAL::total_byte', '').sub('/:total', '')
 
-        bar = TTY::ProgressBar.new(format, total: content_length, head: '>')
+        bar = TTY::ProgressBar.new($format, total: content_length, head: '>')
         bar.resize(50)
-        progress_bar = bar
+        $progress_bar = bar
       end,
+      # @param [Float] progress
       progress_proc: lambda do |progress|
         raise TypeError if progress.nil?
 
-        progress_bar&.advance(progress - progress_bar.current)
+        $progress_bar&.advance(progress - $progress_bar.current)
       end
     )
 
@@ -281,8 +313,8 @@ def get_github_releases
     printc e.detailed_message, 'error'
   end
 
-  # If the GitHub API rate limit is exceeded, tell the user
-  return unless rate_limited(parse_json(c_file_path, ['message']))
+  # If the GitHub/GitLab API rate limit is exceeded, tell the user
+  return unless rate_limited?(feedback_msg)
 
   printc 'API rate limit exceeded!', 'warn'
   printc "Deleting #{c_file_path}", 'info'
@@ -292,6 +324,9 @@ end
 # rubocop: disable Style/OptionalBooleanParameter
 
 # Prints colored text to the terminal
+# @param [String] msg
+# @param [String] msg_type
+# @param [Boolean] new_line
 def printc(msg, msg_type, new_line = false)
   # Define colours here
   @RED = "\e[31m"
@@ -302,7 +337,7 @@ def printc(msg, msg_type, new_line = false)
   @GREY = "\e[37m"
   @RESET = "\e[0m"
 
-  # Add a new line if `new_line` is true
+  # Add a newline if `new_line` is true
   cr = new_line ? "\n" : ''
 
   case msg_type
@@ -324,6 +359,8 @@ end
 
 # Retrieves JSON content from a file,
 # then parses it into a Ruby object.
+# @param [String] path
+# @param [Array] json_path
 # @return [String]
 def parse_json(path, json_path)
   raise TypeError unless path.is_a?(String)
@@ -334,10 +371,15 @@ def parse_json(path, json_path)
   # Access the nested data using the dig method
   # Using "&." for safe navigation
   # dig is a real method. See https://docs.ruby-lang.org/en/3.0/dig_methods_rdoc.html
+  # @param [Hash] acc
+  # @param [Object] key
   json_path.reduce(data) { |acc, key| acc&.dig(key) }
 end
 # rubocop: enable Style/OptionalBooleanParameter
 
 # Tells if GitHub API rate limit is exceeded
+# @param [String] feedback_msg
 # @return [Boolean]
-def rate_limited(feedback_msg) = feedback_msg.include?('API rate limit exceeded')
+def rate_limited?(feedback_msg)
+  feedback_msg.include?('API rate limit exceeded') || feedback_msg.include?('Retry later')
+end
