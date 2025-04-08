@@ -7,6 +7,8 @@ require 'typhoeus'
 require 'down'
 require 'tty-progressbar'
 require 'json'
+require 'nokogiri'
+require 'rest-client'
 
 ## CONSTANT fields
 
@@ -321,8 +323,6 @@ def get_releases
   FileUtils.remove_file(c_file_path)
 end
 
-# TODO: Create a method for scrapping HTML content
-
 # rubocop: disable Style/OptionalBooleanParameter
 
 # Prints colored text to the terminal
@@ -366,9 +366,6 @@ end
 # @param [Array] json_path
 # @return [String]
 def parse_json(path, json_path)
-  raise TypeError unless path.is_a?(String)
-  raise TypeError unless json_path.is_a?(Array)
-
   # Read file and parse JSON content
   data = JSON.parse(File.read(path))
   # Access the nested data using the dig method
@@ -385,6 +382,8 @@ end
 def rate_limited?(feedback_msg)
   feedback_msg.include?('API rate limit exceeded') || feedback_msg.include?('Retry later')
 end
+
+# TODO: Create a method for scrapping HTML content
 
 # TODO:
 # [ ] Add a method for downloading RPMs (or even files)
