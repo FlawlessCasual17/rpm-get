@@ -7,6 +7,7 @@ gemspec
 
 gem 'down'
 gem 'faraday'
+gem 'nokogiri'
 gem 'ruby-progressbar'
 gem 'tty-progressbar'
 gem 'typhoeus'

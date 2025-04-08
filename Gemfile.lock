@@ -22,9 +22,16 @@ GEM
     ffi (1.17.1-x86_64-linux-gnu)
     json (2.10.2)
     logger (1.7.0)
+    mini_portile2 (2.8.8)
     net-http (0.6.0)
       uri
+    nokogiri (1.18.7)
+      mini_portile2 (~> 2.8.2)
+      racc (~> 1.4)
+    nokogiri (1.18.7-x86_64-linux-gnu)
+      racc (~> 1.4)
     public_suffix (6.0.1)
+    racc (1.8.1)
     ruby-progressbar (1.13.0)
     strings-ansi (0.2.0)
     tty-cursor (0.7.1)
@@ -46,6 +53,7 @@ PLATFORMS
 DEPENDENCIES
   down
   faraday
+  nokogiri
   rpm-get!
   ruby-progressbar
   tty-progressbar
