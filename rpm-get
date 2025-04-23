@@ -226,28 +226,33 @@ def create_etc_dir = FileUtils.mkdir_p($ETC_DIR)
 # Takes a URL and cleans it of unnecessary data.
 # @param [String] url
 # @param [Boolean] trim_url
-# @return [String]
+# @return [String], nil
 def clean_url(url, trim_url: false)
-  # Create a HEAD request type.
-  request = Typhoeus::Request.new(
-    url,
-    method: :head,
-    followlocation: true,
-    maxredirs: 10
-  )
+  begin
+    # Create a HEAD request type.
+    request = Typhoeus::Request.new(
+      url,
+      method: :head,
+      followlocation: true,
+      maxredirs: 10
+    )
 
-  # Execute the request
-  response = request.run
+    # Execute the request
+    response = request.run
 
-  # Get the effective URL (final URL after following redirects)
-  final_url = response.effective_url
+    # Get the effective URL (final URL after following redirects)
+    final_url = response.effective_url
 
-  # Will return the untrimmed URL if
-  # a value for `trim_url` is not passed.
-  return final_url unless trim_url
+    # Will return the untrimmed URL if
+    # a value for `trim_url` is not passed.
+    return final_url unless trim_url
 
-  # Trim any .rpm* patterns to just .rpm
-  final_url.sub(/\.rpm.*/, '.rpm')
+    # Trim any .rpm* patterns to just .rpm
+    final_url.sub(/\.rpm.*/, '.rpm')
+  rescue StandardError => e
+    printc "Failed to clean #{url}", 'error', true
+    printc e.detailed_message, 'error'
+  end
 end
 
 # Gets the releases from either GitHub or GitLab
@@ -384,6 +389,28 @@ def rate_limited?(feedback_msg)
 end
 
 # TODO: Create a method for scrapping HTML content
+# @param [String] url
+# @param [String] regex
+# @param [String] element_ref_1
+# @param [String] element_ref_2
+def scrape_website(url, regex, element_ref_1, element_ref_2)
+  begin
+    request = Typhoeus::Request.new(
+      url,
+      method: :get,
+      followlocation: true,
+      maxredirs: 10
+    )
+
+    response = request.run
+
+    # @type [Nokogiri::HTML::Document]
+    doc = Nokogiri::HTML(response.body)
+
+    # TODO: Use Nokogiri to parse the HTML/XML content
+  rescue StandardError => e
+  end
+end
 
 # TODO:
 # [ ] Add a method for downloading RPMs (or even files)
