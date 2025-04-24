@@ -13,13 +13,13 @@ nohup.out
 
 .gut
 
-### Ruby ###
-/.bundle/
-/.yardoc
-/_yardoc/
-/coverage/
-/doc/
-/pkg/
-/spec/reports/
-/tmp/
-/sorbet/rbi/gems/
+
+# Go template downloaded with gut
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
