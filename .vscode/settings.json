@@ -1,0 +1,13 @@
+{
+    "json.schemas": [
+        {
+            "fileMatch": [
+                ".golangci.yml",
+                ".golangci.yaml",
+                ".golangci.toml",
+                ".golangci.json"
+            ],
+            "url": "https://golangci-lint.run/jsonschema/golangci.jsonschema.json"
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+version: '2'
+
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - bodyclose
+    - dupl
+    - dupword
+    - err113
+    - errcheck
+    - errorlint
+    - goconst
+    - govet
+    - ineffassign
+    - staticcheck
+    - unconvert
+    - unused
+    - unparam
+    - nestif
+    - nilerr
+    - nilnil
+    - whitespace
+    - wsl
+
+severity:
+  default: error
+  rules:
+    - linters:
+        - unused
+      severity: info
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  new: false
+  fix: false
+  uniq-by-line: true
+  whole-files: false
