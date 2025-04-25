@@ -22,6 +22,11 @@ linters:
     - nilnil
     - whitespace
     - wsl
+  settings:
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true
 
 severity:
   default: error
@@ -29,5 +34,3 @@ severity:
     - linters:
         - unused
       severity: info
-
-
