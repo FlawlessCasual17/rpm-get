@@ -2,13 +2,13 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
+    "fmt"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "runtime"
 
-	"github.com/fatih/color"
+    "github.com/fatih/color"
 )
 
 // Important variables/constants
