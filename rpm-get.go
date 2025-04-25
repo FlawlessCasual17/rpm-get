@@ -166,13 +166,13 @@ func checkPath(cmd string)  {
 
 // createCacheDir creates the cache directory.
 func createCacheDir() {
-    err := os.Mkdir(CACHE_DIR, 0755)
+    err := os.MkdirAll(CACHE_DIR, 0755)
     if err != nil { printc("Unable to create cache dir!", ERROR, false) }
 }
 
 // createEtcDir creates the etc directory.
 func createEtcDir() {
-    err := os.Mkdir(ETC_DIR, 0755)
+    err := os.MkdirAll(ETC_DIR, 0755)
     if err != nil { printc("Unable to create etc dir!", ERROR, false) }
 }
 
