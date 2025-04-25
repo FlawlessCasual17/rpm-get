@@ -177,7 +177,7 @@ func createEtcDir() {
 }
 
 // `printc` prints messages with colored text to the console.
-func printc(msg string, msgType any, newLine bool) {
+func printc(msg any, msgType any, newLine bool) {
     RED := color.New(color.FgRed).SprintFunc()
     GREEN := color.New(color.FgGreen).SprintFunc()
     YELLOW := color.New(color.FgYellow).SprintFunc()
