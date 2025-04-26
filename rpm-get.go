@@ -145,7 +145,7 @@ func printc(msg any, msgType any, newLine bool) {
         fmt.Printf("%s  [%s]: %s\n", cr, RED(ERROR), msg)
     case FATAL:
         fmt.Printf("%s  [%s]: %s\n", cr, ORANGE(FATAL), msg)
-        os.Exit(1)
+        os.Exit(ERROR_EXIT_CODE)
     default:
         fmt.Printf("%s  [%s]: %s\n", cr, GRAY("UNKNOWN"), msg)
     }
