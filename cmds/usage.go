@@ -1,13 +1,13 @@
-package main
+package cmds
 
 import "fmt"
 
 // VERSION is the current version of _rpm-get_.
 const VERSION string = "0.0.1"
 
-// usage prints the help text when rpm-get is called without arguments,
+// Usage prints the help text when rpm-get is called without arguments,
 // Or called with the `help` argument.
-func usage() {
+func Usage() {
 	fmt.Printf(`
 rpm-get version %s
 

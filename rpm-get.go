@@ -2,16 +2,19 @@
 package main
 
 import (
+    "flag"
     "fmt"
     "os"
     "os/exec"
     "path/filepath"
     "runtime"
 
+    // "github.com/spf13/cobra"
+    "github.com/FlawlessCasual17/rpm-get/cmds"
     "github.com/fatih/color"
 )
 
-// Important variables/constants
+// BEGIN: Important variables/constants
 
 // VERSION is the current version of _rpm-get_.
 const VERSION string = "0.0.1"
@@ -31,9 +34,9 @@ const HOST_CPU string = runtime.GOARCH
 var UserAgent = fmt.Sprintf(
     "Mozilla/5.0 (X11; Linux %s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36", HOST_CPU)
 
-// Important variables/constants
+// END: Important variables/constants
 
-// Message types
+// BEGIN: Message types
 
 // INFO is the message type for informational messages.
 const INFO string = "INFO"
@@ -47,11 +50,32 @@ const ERROR string = "ERROR"
 // This is followed by `os.Exit(1)`.
 const FATAL string = "FATAL"
 
-// Message types
+// END: Message types
+
+const SUCCESS_EXIT_CODE int = 0
+const ERROR_EXIT_CODE int = 1
 
 func main() {
-    // homeDir, _ := os.UserHomeDir()
+    flag.Usage = cmds.Usage
 
+    helpFlag := flag.Bool("help", false, "Print help message.")
+
+    flag.Parse()
+
+    if *helpFlag {
+        cmds.Usage()
+        os.Exit(SUCCESS_EXIT_CODE)
+    }
+
+    args := flag.Args()
+
+    if len(args) > 0 {
+        switch args[0] {
+        case "help":
+            cmds.Usage()
+            os.Exit(SUCCESS_EXIT_CODE)
+        }
+    }
 }
 
 // spellcheck: ignore
