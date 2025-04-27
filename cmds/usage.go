@@ -2,8 +2,10 @@ package cmds
 
 import "fmt"
 
-// VERSION is the current version of _rpm-get_.
-const VERSION string = "0.0.1"
+// spellcheck: ignore
+
+// version is the current version of _rpm-get_.
+const version string = "0.0.1"
 
 // Usage prints the help text when rpm-get is called without arguments,
 // Or called with the `help` argument.
@@ -88,5 +90,5 @@ help
 
 version
     show rpm-get version.
-`, VERSION)
+`, version)
 }
