@@ -21,7 +21,7 @@ linters:
     - nilerr
     - nilnil
     - whitespace
-    - wsl
+    # - wsl
   settings:
     revive:
       rules:
