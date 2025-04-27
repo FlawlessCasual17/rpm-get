@@ -1,10 +1,12 @@
 package cmd
 
-import "fmt"
+import (
+    "fmt"
+)
 
-// Usage prints the help text when rpm-get is called without arguments,
+// usage prints the help text when rpm-get is called without arguments,
 // Or called with the `help` argument.
-func Usage() {
+func usage() {
 	fmt.Print(`
 
 
