@@ -58,8 +58,7 @@ const USAGE_EXIT_CODE int = 2
 func main() {
     // Check if no arguments were provided (len(os.Args) == 1 means only program name was provided)
     if len(os.Args) == 1 {
-        cmds.Usage()
-        return
+        cmds.Usage(); os.Exit(USAGE_EXIT_CODE)
     }
 
     for _, arg := range os.Args[1:] {
