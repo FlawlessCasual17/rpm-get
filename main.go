@@ -16,7 +16,7 @@ import (
 // BEGIN: Important variables/constants
 
 // VERSION is the current version of _rpm-get_.
-const VERSION string = "0.0.1"
+const VERSION string = "0.0.3"
 
 var homeDir, _ = os.UserHomeDir()
 // CacheDir is the directory where rpm-get will
