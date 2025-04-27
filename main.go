@@ -8,8 +8,7 @@ import (
     "os/exec"
     "path/filepath"
     "runtime"
-
-    // "github.com/spf13/cobra"
+    // third-party packages
     "github.com/FlawlessCasual17/rpm-get/cmds"
     "github.com/fatih/color"
 )
@@ -54,43 +53,77 @@ const FATAL string = "FATAL"
 
 const SUCCESS_EXIT_CODE int = 0
 const ERROR_EXIT_CODE int = 1
+const USAGE_EXIT_CODE int = 2
 
 func main() {
-    flag.Usage = cmds.Usage
-
-    helpFlag := flag.Bool("help", false, "Print help message.")
-
-    flag.Parse()
-
-    if *helpFlag {
+    // Check if no arguments were provided (len(os.Args) == 1 means only program name was provided)
+    if len(os.Args) == 1 {
         cmds.Usage()
-        os.Exit(SUCCESS_EXIT_CODE)
+        return
     }
 
-    args := flag.Args()
-
-    if len(args) > 0 {
-        switch args[0] {
+    for _, arg := range os.Args[1:] {
+        switch arg {
+        case "-version":
+            printc("`-version` is not a valid flag. Use `-v` or `--version` instead", WARNING, false)
+            os.Exit(USAGE_EXIT_CODE)
+        case "-help":
+            printc("`-help` is not a valid flag. Use `-h` or `--help` instead", WARNING, false)
+            os.Exit(USAGE_EXIT_CODE)
         case "help":
-            cmds.Usage()
-            os.Exit(SUCCESS_EXIT_CODE)
+            cmds.Usage(); os.Exit(SUCCESS_EXIT_CODE)
+        case "version":
+            getVersion(); os.Exit(SUCCESS_EXIT_CODE)
         }
+    }
+
+    // Set custom usage function before defining flags
+    flag.Usage = cmds.Usage
+
+    // Define -h flag
+    helpFlag := flag.Bool("h", false, "Display help information")
+
+    versionFlag := flag.Bool("v", false, "Display version information")
+
+    // Parse flags
+    flag.Parse()
+
+    // Check for `--help` in remaining args
+    for _, arg := range flag.Args() {
+        switch arg {
+        case "-?", "--help":
+            cmds.Usage(); os.Exit(SUCCESS_EXIT_CODE)
+        case "--version":
+            getVersion(); os.Exit(SUCCESS_EXIT_CODE)
+        }
+    }
+
+    // Check if -h was used
+    if *helpFlag {
+        cmds.Usage(); os.Exit(SUCCESS_EXIT_CODE)
+    } else if *versionFlag {
+        getVersion(); os.Exit(SUCCESS_EXIT_CODE)
     }
 }
 
 // spellcheck: ignore
 
-func getVersion() string {
-    return fmt.Sprintf("rpm-get version %s", VERSION)
+// getVersion prints the current version of rpm-get.
+func getVersion() {
+    fmt.Printf("rpm-get version: %s", VERSION)
 }
 
-// checkPrivileges ensures that the user running rpm-get is using sudo or is a root.
-func checkPrivileges() {
+// isAdmin ensures that the user running rpm-get is using sudo or is a root.
+func isAdmin() bool {
     if os.Geteuid() != 0 || os.Getenv("SUDO_USER") != "" {
-        printc("rpm-get must be run as root.", FATAL, false)
+        printc("rpm-get must be run as root.", WARNING, false)
+
+        return false
     }
 
-    printc("rpm-get is running as root.", INFO, false)
+    printc("rpm-get is running as root.", INFO, true)
+
+    return true
 }
 
 // spellcheck: ignore
@@ -107,19 +140,18 @@ func which(cmd string)  {
 // createCacheDir creates the cache directory.
 func createCacheDir() {
     err := os.MkdirAll(CacheDir, 0755)
-    if err != nil { printc("Unable to create cache dir!", ERROR, false) }
+    if err != nil { printc("Unable to create cache dir!", FATAL, false) }
 }
 
 // createEtcDir creates the etc directory.
 func createEtcDir() {
     err := os.MkdirAll(ETC_DIR, 0755)
-    if err != nil { printc("Unable to create etc dir!", ERROR, false) }
+    if err != nil { printc("Unable to create etc dir!", FATAL, false) }
 }
 
 // getReleases retrieves the list of releases from the GitHub/GitLab API.
-func getReleases() {
-
-}
+// func getReleases() {
+// }
 
 // `printc` prints messages with colored text to the console.
 func printc(msg any, msgType any, newLine bool) {
