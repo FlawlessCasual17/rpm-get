@@ -9,14 +9,14 @@ import (
     "path/filepath"
     "runtime"
     // third-party packages
-    "github.com/FlawlessCasual17/rpm-get/cmds"
+    "github.com/FlawlessCasual17/rpm-get/cmd"
     "github.com/fatih/color"
 )
 
 // BEGIN: Important variables/constants
 
 // VERSION is the current version of _rpm-get_.
-const VERSION string = "0.0.3"
+const VERSION string = "0.0.1"
 
 var homeDir, _ = os.UserHomeDir()
 // CacheDir is the directory where rpm-get will
@@ -58,7 +58,7 @@ const USAGE_EXIT_CODE int = 2
 func main() {
     // Check if no arguments were provided (len(os.Args) == 1 means only program name was provided)
     if len(os.Args) == 1 {
-        cmds.Usage(); os.Exit(USAGE_EXIT_CODE)
+        cmd.Usage(); os.Exit(USAGE_EXIT_CODE)
     }
 
     for _, arg := range os.Args[1:] {
@@ -70,14 +70,14 @@ func main() {
             printc("`-help` is not a valid flag. Use `-h` or `--help` instead", WARNING, false)
             os.Exit(USAGE_EXIT_CODE)
         case "help":
-            cmds.Usage(); os.Exit(SUCCESS_EXIT_CODE)
+            cmd.Usage(); os.Exit(SUCCESS_EXIT_CODE)
         case "version":
             getVersion(); os.Exit(SUCCESS_EXIT_CODE)
         }
     }
 
     // Set custom usage function before defining flags
-    flag.Usage = cmds.Usage
+    flag.Usage = cmd.Usage
 
     // Define -h flag
     helpFlag := flag.Bool("h", false, "Display help information")
@@ -91,7 +91,7 @@ func main() {
     for _, arg := range flag.Args() {
         switch arg {
         case "-?", "--help":
-            cmds.Usage(); os.Exit(SUCCESS_EXIT_CODE)
+            cmd.Usage(); os.Exit(SUCCESS_EXIT_CODE)
         case "--version":
             getVersion(); os.Exit(SUCCESS_EXIT_CODE)
         }
@@ -99,7 +99,7 @@ func main() {
 
     // Check if -h was used
     if *helpFlag {
-        cmds.Usage(); os.Exit(SUCCESS_EXIT_CODE)
+        cmd.Usage(); os.Exit(SUCCESS_EXIT_CODE)
     } else if *versionFlag {
         getVersion(); os.Exit(SUCCESS_EXIT_CODE)
     }
@@ -158,7 +158,7 @@ func printc(msg any, msgType any, newLine bool) {
     GREEN := color.New(color.FgGreen).SprintFunc()
     YELLOW := color.New(color.FgYellow).SprintFunc()
     BLUE := color.New(color.FgBlue).SprintFunc()
-    ORANGE := color.New(color.FgHiYellow).SprintFunc()
+    ORANGE := color.RGB(255, 128, 0).SprintFunc()
     GRAY := color.New(color.FgHiBlack).SprintFunc()
     // RESET := color.New(color.Reset).SprintFunc()
 
