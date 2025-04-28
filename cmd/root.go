@@ -75,6 +75,7 @@ func init() {
 
     hFlag := flag.Bool("h", false, "Display help information")
     helpFlag := flag.Bool("help", false, "Display help information")
+    questionflag := flag.Bool("?", false, "Display help information")
 
     vFlag := flag.Bool("v", false, "Display version information")
     versionFlag := flag.Bool("version", false, "Display version information")
@@ -85,13 +86,13 @@ func init() {
     // Check for `--help` in remaining args
     for _, arg := range flag.Args() {
         switch arg {
-        case "-?", "--help":
+        case "--help":
             Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
         }
     }
 
     // Check if -h was used
-    if *hFlag || *helpFlag {
+    if *hFlag || *helpFlag || *questionflag {
         Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
     } else if *vFlag || *versionFlag {
         getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
