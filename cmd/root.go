@@ -56,6 +56,20 @@ func Execute() {
     }
 }
 
+// spellcheck: ignore
+
+// TODO: Add the following commands:
+//   - install
+//   - cache
+//   - reinstall
+//   - remove
+//   - update
+//   - upgrade
+//   - info
+//   - list
+//   - search
+//   - clean
+
 func init() {
     for _, arg := range os.Args[1:] {
         switch arg {
