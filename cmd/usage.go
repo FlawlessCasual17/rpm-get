@@ -2,12 +2,27 @@ package cmd
 
 import (
     "fmt"
+    "os"
+
+    h "github.com/FlawlessCasual17/rpm-get/helpers"
+    "github.com/spf13/cobra"
 )
 
-// usage prints the help text when rpm-get is called without arguments,
+var helpCmd = &cobra.Command {
+    Use: "help",
+    Short: "Show usage",
+    Long: "Show usage",
+    Run: func(_ *cobra.Command, _ []string) {
+        Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
+    },
+}
+
+func init() { rootCmd.AddCommand(helpCmd) }
+
+// Usage prints the help text when rpm-get is called without arguments,
 // Or called with the `help` argument.
-func usage() {
-	fmt.Print(`
+func Usage() {
+    fmt.Print(`
 
 
 Usage
