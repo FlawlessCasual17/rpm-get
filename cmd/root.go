@@ -40,11 +40,13 @@ const USAGE_EXIT_CODE int = 2
 
 var rootCmd = &cobra.Command {
     Use: "rpm-get",
-    Short: "rpm-get is a CLI tool to download and manage RPM packages.",
+    Short: "rpm-get is a CLI tool for downloading and managing RPM packages.",
     Long: `rpmget is a CLI tool for aquiring RPM packages that are not convieniently
     available in the default repositories. These can be either 3rd party repositories
     or direct download packages from the internet.`,
-    Run: func(_ *cobra.Command, _ []string) {},
+    Run: func(cmd *cobra.Command, _ []string) {
+        Usage(); os.Exit(h.USAGE_EXIT_CODE)
+    },
 }
 
 func Execute() {
@@ -55,11 +57,6 @@ func Execute() {
 }
 
 func init() {
-    // Check if no arguments were provided (len(os.Args) == 1 means only program name was provided)
-    if len(os.Args) == 1 {
-        usage(); os.Exit(h.USAGE_EXIT_CODE)
-    }
-
     for _, arg := range os.Args[1:] {
         switch arg {
         case "-version":
@@ -68,20 +65,19 @@ func init() {
         case "-help":
             h.Printc("`-help` is not a valid flag. Use `-h` or `--help` instead", h.WARNING, false)
             os.Exit(h.USAGE_EXIT_CODE)
-        case "help":
-            usage(); os.Exit(h.SUCCESS_EXIT_CODE)
         case "version":
             getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
         }
     }
 
     // Set custom usage function before defining flags
-    flag.Usage = usage
+    flag.Usage = Usage
 
-    // Define -h flag
-    helpFlag := flag.Bool("h", false, "Display help information")
+    hFlag := flag.Bool("h", false, "Display help information")
+    helpFlag := flag.Bool("help", false, "Display help information")
 
-    versionFlag := flag.Bool("v", false, "Display version information")
+    vFlag := flag.Bool("v", false, "Display version information")
+    versionFlag := flag.Bool("version", false, "Display version information")
 
     // Parse flags
     flag.Parse()
@@ -90,16 +86,14 @@ func init() {
     for _, arg := range flag.Args() {
         switch arg {
         case "-?", "--help":
-            usage(); os.Exit(h.SUCCESS_EXIT_CODE)
-        case "--version":
-            getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
+            Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
         }
     }
 
     // Check if -h was used
-    if *helpFlag {
-        usage(); os.Exit(h.SUCCESS_EXIT_CODE)
-    } else if *versionFlag {
+    if *hFlag || *helpFlag {
+        Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
+    } else if *vFlag || *versionFlag {
         getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
     }
 }
@@ -107,9 +101,7 @@ func init() {
 // spellcheck: ignore
 
 // getVersion prints the current version of rpm-get.
-func getVersion() {
-    fmt.Printf("rpm-get version: %s", VERSION)
-}
+func getVersion() { fmt.Printf("rpm-get version: %s\n", VERSION) }
 
 // isAdmin ensures that the user running rpm-get is using sudo or is a root.
 func isAdmin() bool {
