@@ -3,8 +3,10 @@ package helpers
 import (
     "fmt"
     "os"
+
     // third-party packages
     "github.com/fatih/color"
+    "github.com/samber/lo"
 )
 
 // INFO is the message type for informational messages.
@@ -33,8 +35,7 @@ func Printc(msg any, msgType any, newLine bool) {
     GRAY := color.New(color.FgHiBlack).SprintFunc()
     // RESET := color.New(color.Reset).SprintFunc()
 
-    cr := "\n"
-    if !newLine { cr = "" }
+    cr := lo.Ternary(!newLine, "\n", "")
 
     switch msgType {
     case INFO:
