@@ -197,7 +197,9 @@ func getReleases() {
         feedbackMsg = string(v)
     }
 
-    if _, e := os.Stat(CacheDir); e != nil && os.IsNotExist(e) { createCacheDir() }
+    if _, err := os.Stat(CacheDir); err != nil && os.IsNotExist(err) {
+        createCacheDir()
+    }
 
     // NOTE: `//nolint:all` is used to suppress annoying linter warnings/errors.
 
