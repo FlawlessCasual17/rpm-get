@@ -203,7 +203,7 @@ func getReleases() {
 
     // NOTE: `//nolint:all` is used to suppress annoying linter warnings/errors.
 
-    lo.TryCatch(func() error {
+    lo.TryCatch(func() error { // try
         resp, _ := http.DefaultClient.Do(request)
         //nolint:all
         defer resp.Body.Close()
@@ -220,7 +220,7 @@ func getReleases() {
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
         return nil // No need to return an error here
-    }, func() {
+    }, func() { // catch
         h.Printc("Unable to create cache file!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     })
