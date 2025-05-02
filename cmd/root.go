@@ -214,7 +214,6 @@ func getReleases() {
 
         // NOTE: Might switch to "github.com/cheggaaa/pb" if this doesn't meet my needs.
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-
         h.Printc(fmt.Sprintf("Downloading %s to %s", url, cacheFilePath), h.INFO, true)
         //nolint:all
         io.Copy(io.MultiWriter(file, bar), resp.Body)
