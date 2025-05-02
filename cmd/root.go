@@ -158,7 +158,7 @@ func which(cmd string) string {
     msg := fmt.Sprintf("Command `%s` not found in PATH. Exiting...", cmd)
 
     if err != nil {
-        h.Printc(msg, h.FATAL, false)
+        h.Printc(msg, h.ERROR, false)
         return ""
     }
     return result
