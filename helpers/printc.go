@@ -21,8 +21,11 @@ const ERROR string = "ERROR"
 // This is followed by `os.Exit(1)`.
 const FATAL string = "FATAL"
 
+// Success exit code
 const SUCCESS_EXIT_CODE int = 0
+// Error exit code
 const ERROR_EXIT_CODE int = 1
+// Usage exit code
 const USAGE_EXIT_CODE int = 2
 
 // Printc prints messages with colored text to the console.

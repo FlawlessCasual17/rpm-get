@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "flag"
     "fmt"
+    "io"
     "net/http"
     "os"
     "os/exec"
@@ -13,6 +14,7 @@ import (
 
     h "github.com/FlawlessCasual17/rpm-get/helpers"
     "github.com/samber/lo"
+    "github.com/schollz/progressbar/v3"
     "github.com/spf13/cobra"
 )
 
@@ -46,20 +48,13 @@ const ETC_DIR string = "/etc/rpm-get"
 // HOST_CPU is the host CPU architecture.
 const HOST_CPU string = runtime.GOARCH
 
-// Success exit code
-const SUCCESS_EXIT_CODE int = 0
-// Error exit code
-const ERROR_EXIT_CODE int = 1
-// Usage exit code
-const USAGE_EXIT_CODE int = 2
-
 var rootCmd = &cobra.Command {
     Use: "rpm-get",
     Short: "rpm-get is a CLI tool for downloading and managing RPM packages.",
     Long: `rpm-get is a CLI tool for aquiring RPM packages that are not convieniently
     available in the default repositories. These can be either 3rd party repositories
     or direct download packages from the internet.`,
-    Run: func(cmd *cobra.Command, _ []string) {
+    Run: func(_ *cobra.Command, _ []string) {
         Usage(); os.Exit(h.USAGE_EXIT_CODE)
     },
 }
@@ -158,11 +153,12 @@ func isAdmin() bool {
 
 // which looks for the given command in the
 // PATH and prints an error if it's not found.
-func which(cmd string)  {
-    _, err := exec.LookPath(cmd)
+func which(cmd string) string {
+    result, err := exec.LookPath(cmd)
     msg := fmt.Sprintf("Command `%s` not found in PATH. Exiting...", cmd)
 
     if err != nil { h.Printc(msg, h.FATAL, false) }
+    return result
 }
 
 // createCacheDir creates the cache directory.
@@ -259,35 +255,58 @@ func getReleases() {
     url := ""
     feedbackMsg := ""
 
-    req, _ := http.NewRequest("", url, nil)
-    req.Header.Set("User-Agent", UserAgent)
+    request, _ := http.NewRequest("", url, nil)
+    request.Header.Set("User-Agent", UserAgent)
 
     switch RelType {
     case "github":
         baseUrl := "https://api.github.com/repos"
         url = fmt.Sprintf("%s/%s/%s/releases/latest", baseUrl, Creator, Project)
-        req.Header.Set("Authorization", GhHeaderAuth)
+        request.Header.Set("Authorization", GhHeaderAuth)
         feedbackMsg = parseJson(cacheFilePath, rateLimitedMsg {})
     case "gitlab":
         baseUrl := "https://gitlab.com/api/v4/projects"
         url = fmt.Sprintf("%s/%s/releases/permalink/latest", baseUrl, ProjectId)
-        req.Header.Set("PRIVATE-TOKEN", GlHeaderAuth)
-        v, _ := os.ReadFile(cacheFilePath); feedbackMsg = string(v)
+        request.Header.Set("PRIVATE-TOKEN", GlHeaderAuth)
+        v, _ := os.ReadFile(cacheFilePath);
+        feedbackMsg = string(v)
     }
 
     if _, e := os.Stat(CacheDir); e != nil && os.IsNotExist(e) { createCacheDir() }
 
-    lo.TryCatch(func() error {
-        resp, _ := http.DefaultClient.Do(req)
+    // NOTE: `//nolint:all` is used to suppress annoying linter warnings/errors.
 
-        // TODO: Add the user agent string to the request
-        // TODO: Add the authorization header to the request
-        return nil
+    lo.TryCatch(func() error {
+        resp, _ := http.DefaultClient.Do(request)
+        //nolint:all
+        defer resp.Body.Close()
+
+        file, _ := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+        //nolint:all
+        defer file.Close()
+
+        // NOTE: Might switch to "github.com/cheggaaa/pb" if this doesn't meet my needs.
+        bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
+
+        h.Printc(fmt.Sprintf("Downloading %s to %s", url, cacheFilePath), h.INFO, true)
+        //nolint:all
+        io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+        return nil // No need to return an error here
     }, func() {
-        h.Printc("Unable to create cache file!", h.FATAL, false)
+        h.Printc("Unable to create cache file!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
     })
+
+    if rateLimited(feedbackMsg) {
+        h.Printc("API rate limit exceeded!", h.WARNING, false)
+        h.Printc("Deleting cache file...", h.INFO, true)
+        err := os.Remove(cacheFilePath)
+        if err != nil { h.Printc(err.Error(), h.ERROR, false) }
+    }
 }
 
+//nolint:unused
 type rateLimitedMsg struct {
     message string
 }
@@ -295,13 +314,12 @@ type rateLimitedMsg struct {
 // TODO: Add handling for more complex JSON queries
 
 // parseJson parses the JSON file at the given path.
-func parseJson(filePath string, jsonPath interface{}) string {
+func parseJson(filePath string, jsonPath any) string {
     switch obj := jsonPath.(type) {
     case rateLimitedMsg:
         data, _ := os.ReadFile(filePath)
 
         err := json.Unmarshal(data, &obj)
-
         if err != nil { h.Printc(err.Error(), h.FATAL, false) }
 
         return obj.message
@@ -310,6 +328,7 @@ func parseJson(filePath string, jsonPath interface{}) string {
     }
 }
 
+// rateLimited checks if the given feedback message contains a rate limit error.
 func rateLimited(feedbackMsg string) bool {
     targets := []string { "API rate limit exceeded", "API rate limit exceeded for" }
     return strings.Contains(feedbackMsg, targets[0]) || strings.Contains(feedbackMsg, targets[1])

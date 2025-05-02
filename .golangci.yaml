@@ -27,6 +27,16 @@ linters:
       rules:
         - name: var-naming
           disabled: true
+    staticcheck:
+      checks:
+        - -SA9005
+    unused:
+      field-writes-are-uses: true
+      post-statements-are-reads: false
+      exported-fields-are-used: true
+      parameters-are-used: true
+      local-variables-are-used: true
+      generated-is-used: true
 
 severity:
   default: error
