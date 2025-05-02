@@ -30,7 +30,7 @@ var (
     // CacheDir is the directory where rpm-get will
     // cache JSON files from **_GitHub_**/**_GitLab_**.
     // As well as downloaded packages.
-    CacheDir = filepath.Join(os.Getenv("HOME"), ".cache/rpm-get")
+    CacheDir = filepath.Join(getEnv("HOME"), ".cache/rpm-get")
     Project = ""
     RelType = ""
     Creator = ""
