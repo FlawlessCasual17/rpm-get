@@ -157,7 +157,10 @@ func which(cmd string) string {
     result, err := exec.LookPath(cmd)
     msg := fmt.Sprintf("Command `%s` not found in PATH. Exiting...", cmd)
 
-    if err != nil { h.Printc(msg, h.FATAL, false) }
+    if err != nil {
+        h.Printc(msg, h.FATAL, false)
+        return ""
+    }
     return result
 }
 
