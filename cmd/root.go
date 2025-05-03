@@ -153,6 +153,7 @@ func which(cmd string) string {
         h.Printc(msg, h.ERROR, false)
         return ""
     }
+
     return result
 }
 
