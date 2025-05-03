@@ -12,6 +12,7 @@ import (
     "runtime"
     "strings"
 
+    // third-party imports
     h "github.com/FlawlessCasual17/rpm-get/helpers"
     "github.com/samber/lo"
     "github.com/schollz/progressbar/v3"
@@ -22,11 +23,6 @@ import (
 const VERSION string = "0.0.1"
 
 var (
-    // private variables
-
-
-    // public variables
-
     // CacheDir is the directory where rpm-get will
     // cache JSON files from **_GitHub_**/**_GitLab_**.
     // As well as downloaded packages.
@@ -60,8 +56,8 @@ var rootCmd = &cobra.Command {
 }
 
 func Execute() {
-    if error := rootCmd.Execute(); error != nil {
-        h.Printc(error, h.ERROR, false)
+    if err := rootCmd.Execute(); err != nil {
+        h.Printc(err, h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     }
 }
@@ -69,16 +65,17 @@ func Execute() {
 // spellcheck: ignore
 
 // TODO: Add the following commands:
-//   - install
-//   - cache
-//   - reinstall
-//   - remove
-//   - update
-//   - upgrade
-//   - info
-//   - list
-//   - search
-//   - clean
+//   [x] version
+//   [ ] install
+//   [ ] cache
+//   [ ] reinstall
+//   [ ] remove
+//   [ ] update
+//   [ ] upgrade
+//   [ ] info
+//   [ ] list
+//   [ ] search
+//   [ ] clean
 
 func init() {
     for _, arg := range os.Args[1:] {
@@ -89,8 +86,6 @@ func init() {
         case "-help":
             h.Printc("`-help` is not a valid flag. Use `-h` or `--help` instead", h.WARNING, false)
             os.Exit(h.USAGE_EXIT_CODE)
-        case "version":
-            getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
         }
     }
 
@@ -132,9 +127,6 @@ func getEnv(key string) string {
 }
 
 // spellcheck: ignore
-
-// getVersion prints the current version of rpm-get.
-func getVersion() { fmt.Printf("rpm-get version: %s\n", VERSION) }
 
 // isAdmin ensures that the user running rpm-get is using sudo or is a root.
 func isAdmin() bool {
