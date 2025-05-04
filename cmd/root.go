@@ -1,22 +1,24 @@
 package cmd
 
 import (
-    "encoding/json"
-    "flag"
-    "fmt"
-    "io"
-    "net/http"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "strings"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
 
-    // third-party imports
-    h "github.com/FlawlessCasual17/rpm-get/helpers"
-    "github.com/samber/lo"
-    "github.com/schollz/progressbar/v3"
-    "github.com/spf13/cobra"
+	// third-party imports
+	h "github.com/FlawlessCasual17/rpm-get/helpers"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/samber/lo"
+	"github.com/schollz/progressbar/v3"
+	"github.com/spf13/cobra"
 )
 
 // VERSION is the current version of _rpm-get_.
@@ -214,14 +216,14 @@ func getReleases() {
         //nolint:all
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
-        return nil // No need to return an error here
+        return nil
     }, func() { // catch
         h.Printc("Unable to create cache file!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     })
 
     if rateLimited(feedbackMsg) {
-        h.Printc("API rate limit exceeded!", h.WARNING, false)
+        h.Printc("API rate limit exceeded!", h.WARNING, true)
         h.Printc("Deleting cache file...", h.INFO, true)
         err := os.Remove(cacheFilePath)
         if err != nil { h.Printc(err.Error(), h.ERROR, false) }
@@ -254,4 +256,38 @@ func parseJson(filePath string, jsonPath any) string {
 func rateLimited(feedbackMsg string) bool {
     targets := []string { "API rate limit exceeded", "API rate limit exceeded for" }
     return strings.Contains(feedbackMsg, targets[0]) || strings.Contains(feedbackMsg, targets[1])
+}
+
+// scrapeWebsite parses a website and returns the matches of a given regex.
+func scrapeWebsite(url string, regex string, elementRefs []string) string {
+    newRegex, _ := regexp.Compile(regex)
+
+    request, _ := http.NewRequest("", url, nil)
+    request.Header.Set("User-Agent", UserAgent)
+
+    result := ""
+
+    lo.TryCatch(func() error { // try
+        resp, _ := http.DefaultClient.Do(request)
+        //nolint:all
+        defer resp.Body.Close()
+
+        doc, err := goquery.NewDocumentFromReader(resp.Body)
+        if err != nil { h.Printc(err.Error(), h.WARNING, true) }
+
+        // Parse HTML
+        selection := doc.Find(elementRefs[0])
+        selection.Each(func(i int, s *goquery.Selection) {
+            element := s.Find(elementRefs[1]).Text()
+            match := newRegex.FindString(element)
+            if newRegex.MatchString(element) { result = match }
+        })
+
+        return nil
+    }, func() { // catch
+        h.Printc("Failed to scrape the requested website!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    })
+
+    return result
 }
