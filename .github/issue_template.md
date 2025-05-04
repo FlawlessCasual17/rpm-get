@@ -1,16 +1,14 @@
-# deb-get issue template
+# rpm-get issue template
 
-Thank you for taking the time to report an issue to the `deb-get` project 🙂
+Thank you for taking the time to report an issue to the `rpm-get` project 🙂
 
  - Please complete one the appropriate sections below.
  - Delete all the sections that do not apply, including this one.
  - Any issues that do not use this template will be closed.
- - If you're not sure what to do, or have a general question about `deb-get`, then ask in [Wimpy's World Discord](https://wimpysworld.io/discord).
-
 
 ## Requesting a new app ✨
 
-If you are requesting a new app to be added to `deb-get` please complete the
+If you are requesting a new app to be added to `rpm-get` please complete the
 following section, only one app per issue please.
 
  - [ ] I have checked that this app does not already have a pending request and has not previously been declined.
@@ -22,17 +20,17 @@ following section, only one app per issue please.
 
 ## Requesting a new feature 🧑‍💻
 
-If you are proposing a new feature for `deb-get` please describe the proposed
+If you are proposing a new feature for `rpm-get` please describe the proposed
 feature with as much detail as possible here:
 
 
 ## Reporting a bug 🐛
 
-Please make sure the version of `deb-get` you are using is up to date:
+Please make sure the version of `rpm-get` you are using is up to date:
 
 ```bash
-deb-get update
-deb-get reinstall deb-get
+rpm-get update
+rpm-get reinstall rpm-get
 ```
 
 ### Expected behavior
@@ -63,14 +61,14 @@ cat /etc/os-release
 cat /etc/lsb-release
 ```
 
-#### deb-get version
+#### rpm-get version
 
 ```bash
-deb-get version
+rpm-get version
 ```
 
-### deb-get update
+### rpm-get update
 
 ```bash
-deb-get update
+rpm-get update
 ```
