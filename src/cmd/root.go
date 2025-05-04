@@ -1,24 +1,24 @@
 package cmd
 
 import (
-	"encoding/json"
-	"flag"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
+    "encoding/json"
+    "flag"
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "regexp"
+    "runtime"
+    "strings"
 
-	// third-party imports
-	h "github.com/FlawlessCasual17/rpm-get/helpers"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/samber/lo"
-	"github.com/schollz/progressbar/v3"
-	"github.com/spf13/cobra"
+    // third-party imports
+    h "github.com/FlawlessCasual17/rpm-get/helpers"
+    "github.com/PuerkitoBio/goquery"
+    "github.com/samber/lo"
+    "github.com/schollz/progressbar/v3"
+    "github.com/spf13/cobra"
 )
 
 // VERSION is the current version of rpm-get.
@@ -41,6 +41,7 @@ var (
     GlHeaderAuth = getEnv("GITLAB_TOKEN")
 )
 
+// ETC_DIR is the directory where rpm-get will store repositories.
 const ETC_DIR string = "/etc/rpm-get"
 
 // HOST_CPU is the host CPU architecture.
@@ -160,7 +161,6 @@ func getReleases() {
     cacheFilePath := filepath.Join(CacheDir, filePath)
     url := ""
     feedbackMsg := ""
-
     request, _ := http.NewRequest("", url, nil)
     request.Header.Set("User-Agent", UserAgent)
 
@@ -244,10 +244,8 @@ func rateLimited(feedbackMsg string) bool {
 // scrapeWebsite parses a website and returns the matches of a given regex.
 func scrapeWebsite(url string, regex string, elementRefs []string) string {
     newRegex, _ := regexp.Compile(regex)
-
     request, _ := http.NewRequest("", url, nil)
     request.Header.Set("User-Agent", UserAgent)
-
     result := ""
 
     lo.TryCatch(func() error { // try
