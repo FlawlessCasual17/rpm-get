@@ -313,36 +313,3 @@ func installRpm(filePath string) {
 // func updateRpm(names []string) {
 //
 // }
-
-// spellcheck: ignore
-// TODO: Add the following functions
-//  [x] Add a method for downloading RPMs
-//  [x] Add a method for installing RPMs
-//  [ ] Add a method for upgrading RPMs
-//  [ ] Add a method for checking for updates
-//  [ ] Add a method for removing RPMs
-//  [ ] Add a method for reinstalling RPMs
-//  [ ] Add a method for adding Copr/Zypper repos
-//  [ ] Add a method for removing Copr/Zypper repos
-//  [ ] Add a method for getting info about a specific package
-//  [ ] Add a method for listing packages
-//  [ ] Add a method for listing repos
-//  [ ] Add a method for searching for packages
-//  [ ] Add a method for cleaning the cache
-//  [ ] Add a method for cleaning leftover versions
-
-// spellcheck: ignore
-// TODO: Add the following commands:
-//   [x] version
-//   [ ] install
-//   [ ] upgrade
-//   [ ] update
-//   [ ] remove
-//   [ ] reinstall
-//   [ ] repos
-//   [ ] info
-//   [ ] list
-//   [ ] list-repos
-//   [ ] search
-//   [ ] cache
-//   [ ] clean
