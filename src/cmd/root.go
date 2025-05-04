@@ -134,12 +134,10 @@ func getEnv(key string) string {
 func isAdmin() bool {
     if os.Geteuid() != 0 || os.Getenv("SUDO_USER") != "" {
         h.Printc("rpm-get must be run as root.", h.WARNING, false)
-
         return false
     }
 
     h.Printc("rpm-get is running as root.", h.INFO, true)
-
     return true
 }
 
@@ -291,3 +289,15 @@ func scrapeWebsite(url string, regex string, elementRefs []string) string {
 
     return result
 }
+
+// TODO:
+//  [ ] Add a method for downloading RPMs (or even files)
+//  [ ] Add a method for prompting the user with an app's EULA
+//  [ ] Add a method for installing RPMs
+//  [ ] Add a method for uninstalling RPMs
+//  [ ] Add a method for updating RPMs
+//  [ ] Add a method for adding Copr/Zypper repos
+//  [ ] Add a method for removing Copr/Zypper repos
+//  [ ] Add a method for validating RPMs
+//  [ ] Add a method for listing RPMs
+//  [ ] Add a method for listing repos
