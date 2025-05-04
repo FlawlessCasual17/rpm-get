@@ -25,10 +25,6 @@ import (
 const VERSION string = "0.0.1"
 
 var (
-    // CacheDir is the directory where rpm-get will
-    // cache JSON files from **_GitHub_**/**_GitLab_**.
-    // As well as downloaded packages.
-    CacheDir = filepath.Join(getEnv("HOME"), ".cache/rpm-get")
     Project = ""
     RelType = ""
     Creator = ""
@@ -43,6 +39,11 @@ var (
 
 // ETC_DIR is the directory where rpm-get will store repositories.
 const ETC_DIR string = "/etc/rpm-get"
+
+// CACHE_DIR is the directory where rpm-get will
+// cache JSON files from GitHub/GitLab.
+// As well as downloaded packages.
+const CACHE_DIR string = "/var/cache/rpm-get"
 
 // HOST_CPU is the host CPU architecture.
 const HOST_CPU string = runtime.GOARCH
@@ -118,13 +119,7 @@ func getEnv(key string) string {
 
 // isAdmin ensures that the user running rpm-get is using sudo or is a root.
 func isAdmin() bool {
-    if os.Geteuid() != 0 || os.Getenv("SUDO_USER") != "" {
-        h.Printc("rpm-get must be run as root.", h.WARNING, false)
-        return false
-    }
-
-    h.Printc("rpm-get is running as root.", h.INFO, true)
-    return true
+    return os.Geteuid() == 0 || os.Getenv("SUDO_USER") == ""
 }
 
 // spellcheck: ignore
@@ -145,7 +140,7 @@ func which(cmd string) string {
 
 // createCacheDir creates the cache directory.
 func createCacheDir() {
-    err := os.MkdirAll(CacheDir, 0755)
+    err := os.MkdirAll(CACHE_DIR, 0755)
     if err != nil { h.Printc("Unable to create cache dir!", h.FATAL, false) }
 }
 
@@ -158,7 +153,7 @@ func createEtcDir() {
 // getReleases retrieves the list of releases from the GitHub/GitLab API.
 func getReleases() {
     filePath := fmt.Sprintf("%s_cache.json", Project)
-    cacheFilePath := filepath.Join(CacheDir, filePath)
+    cacheFilePath := filepath.Join(CACHE_DIR, filePath)
     url := ""
     feedbackMsg := ""
     request, _ := http.NewRequest("", url, nil)
@@ -178,7 +173,7 @@ func getReleases() {
         feedbackMsg = string(v)
     }
 
-    if _, err := os.Stat(CacheDir); err != nil && os.IsNotExist(err) {
+    if _, err := os.Stat(CACHE_DIR); err != nil && os.IsNotExist(err) {
         createCacheDir()
     }
 
@@ -195,7 +190,7 @@ func getReleases() {
 
         // NOTE: Might switch to "github.com/cheggaaa/pb" if this doesn't meet my needs.
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        h.Printc(fmt.Sprintf("Downloading %s to %s", url, cacheFilePath), h.INFO, true)
+        h.Printc("Downloading...", h.INFO, true)
         //nolint:all
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
@@ -273,27 +268,81 @@ func scrapeWebsite(url string, regex string, elementRefs []string) string {
     return result
 }
 
-// TODO:
-//  [ ] Add a method for downloading RPMs (or even files)
-//  [ ] Add a method for prompting the user with an app's EULA
-//  [ ] Add a method for installing RPMs
-//  [ ] Add a method for uninstalling RPMs
-//  [ ] Add a method for updating RPMs
+// downloadRpm downloads the requested RPM package.
+func downloadRpm(url string, filePath string) {
+    cacheFilePath := filepath.Join(CACHE_DIR, filePath)
+    request, _ := http.NewRequest("", url, nil)
+    request.Header.Set("User-Agent", UserAgent)
+
+    lo.TryCatch(func() error { // try
+        resp, _ := http.DefaultClient.Do(request)
+        //nolint:all
+        defer resp.Body.Close()
+
+        file, _ := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+        //nolint:all
+        defer file.Close()
+
+        bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
+        h.Printc("Downloading...", h.INFO, true)
+        //nolint:all
+        io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+        return nil
+    }, func() { // catch
+        h.Printc("Failed to download the requested RPM!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    })
+}
+
+func installRpm(filePath string) {
+	if !isAdmin() {
+		h.Printc("rpm-get must be run as root.", h.WARNING, false)
+	}
+
+    name := fmt.Sprintf("%s %s", which("sudo"), which("dnf"))
+    args := []string { "install", filePath }
+    cmd := exec.Command(name, args...)
+
+    out, err := cmd.Output()
+    if err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+    } else { println(out) }
+}
+
+// func updateRpm(names []string) {
+//
+// }
+
+// spellcheck: ignore
+// TODO: Add the following functions
+//  [x] Add a method for downloading RPMs
+//  [x] Add a method for installing RPMs
+//  [ ] Add a method for upgrading RPMs
+//  [ ] Add a method for checking for updates
+//  [ ] Add a method for removing RPMs
+//  [ ] Add a method for reinstalling RPMs
 //  [ ] Add a method for adding Copr/Zypper repos
 //  [ ] Add a method for removing Copr/Zypper repos
-//  [ ] Add a method for validating RPMs
-//  [ ] Add a method for listing RPMs
+//  [ ] Add a method for getting info about a specific package
+//  [ ] Add a method for listing packages
 //  [ ] Add a method for listing repos
+//  [ ] Add a method for searching for packages
+//  [ ] Add a method for cleaning the cache
+//  [ ] Add a method for cleaning leftover versions
 
+// spellcheck: ignore
 // TODO: Add the following commands:
 //   [x] version
 //   [ ] install
-//   [ ] cache
-//   [ ] reinstall
-//   [ ] remove
-//   [ ] update
 //   [ ] upgrade
+//   [ ] update
+//   [ ] remove
+//   [ ] reinstall
+//   [ ] repos
 //   [ ] info
 //   [ ] list
+//   [ ] list-repos
 //   [ ] search
+//   [ ] cache
 //   [ ] clean
