@@ -300,16 +300,23 @@ func installRpm(filePath string) {
 		h.Printc("rpm-get must be run as root.", h.WARNING, false)
 	}
 
-    name := fmt.Sprintf("%s %s", which("sudo"), which("dnf"))
-    args := []string { "install", filePath }
-    cmd := exec.Command(name, args...)
+    cmd := which("sudo") + " " + which("dnf")
+    args := []string { "install", "-y", filePath }
+    command := exec.Command(cmd, args...)
 
-    out, err := cmd.Output()
+    out, err := command.Output()
     if err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else { println(out) }
 }
 
-// func updateRpm(names []string) {
-//
-// }
+func upgradeRpm(pkgNames []string) {
+    cmd := which("sudo") + " " + which("dnf")
+    args := []string { "upgrade", "-y", strings.Join(pkgNames, " ") }
+    command := exec.Command(cmd, args...)
+
+    out, err := command.Output()
+    if err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+    } else { println(out) }
+}
