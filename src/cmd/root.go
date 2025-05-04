@@ -297,9 +297,10 @@ func downloadRpm(url string, filePath string) {
 
 // installPkg installs the requested RPM package.
 func installPkg(filePath string) {
-	if !isAdmin() {
-		h.Printc("rpm-get must be run as root.", h.WARNING, false)
-	}
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    }
 
     cmd := which("sudo") + " " + which("dnf")
     args := []string { "install", "-y", filePath }
@@ -313,6 +314,11 @@ func installPkg(filePath string) {
 
 // upgradePkg upgrades the given RPM packages.
 func upgradePkg(pkgNames []string) {
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    }
+
     cmd := which("sudo") + " " + which("dnf")
     args := []string { "upgrade", "-y", strings.Join(pkgNames, " ") }
     command := exec.Command(cmd, args...)
@@ -322,3 +328,7 @@ func upgradePkg(pkgNames []string) {
         h.Printc(err.Error(), h.ERROR, false)
     } else { println(out) }
 }
+
+// func checkUpdates() {
+//     // TODO:This should clone the main repo and check if there are any brand-new packages
+// }
