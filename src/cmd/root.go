@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// VERSION is the current version of _rpm-get_.
+// VERSION is the current version of rpm-get.
 const VERSION string = "0.0.1"
 
 var (
@@ -63,21 +63,6 @@ func Execute() {
         os.Exit(h.ERROR_EXIT_CODE)
     }
 }
-
-// spellcheck: ignore
-
-// TODO: Add the following commands:
-//   [x] version
-//   [ ] install
-//   [ ] cache
-//   [ ] reinstall
-//   [ ] remove
-//   [ ] update
-//   [ ] upgrade
-//   [ ] info
-//   [ ] list
-//   [ ] search
-//   [ ] clean
 
 func init() {
     for _, arg := range os.Args[1:] {
@@ -301,3 +286,16 @@ func scrapeWebsite(url string, regex string, elementRefs []string) string {
 //  [ ] Add a method for validating RPMs
 //  [ ] Add a method for listing RPMs
 //  [ ] Add a method for listing repos
+
+// TODO: Add the following commands:
+//   [x] version
+//   [ ] install
+//   [ ] cache
+//   [ ] reinstall
+//   [ ] remove
+//   [ ] update
+//   [ ] upgrade
+//   [ ] info
+//   [ ] list
+//   [ ] search
+//   [ ] clean
