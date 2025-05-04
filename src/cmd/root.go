@@ -295,7 +295,8 @@ func downloadRpm(url string, filePath string) {
     })
 }
 
-func installRpm(filePath string) {
+// installPkg installs the requested RPM package.
+func installPkg(filePath string) {
 	if !isAdmin() {
 		h.Printc("rpm-get must be run as root.", h.WARNING, false)
 	}
@@ -310,7 +311,8 @@ func installRpm(filePath string) {
     } else { println(out) }
 }
 
-func upgradeRpm(pkgNames []string) {
+// upgradePkg upgrades the given RPM packages.
+func upgradePkg(pkgNames []string) {
     cmd := which("sudo") + " " + which("dnf")
     args := []string { "upgrade", "-y", strings.Join(pkgNames, " ") }
     command := exec.Command(cmd, args...)
