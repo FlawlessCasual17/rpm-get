@@ -9,5 +9,5 @@ This project is inspired by [deb-get](https://github.com/wimpysworld/deb-get) by
 ## To-do
 
 1. ~~(Optional) Try transitioning this project from BASH to either Ruby or Lua.~~
-2. Rename the binaries from deb-get to rpm-get.
+2. ~~Rename the binaries from deb-get to rpm-get.~~
 3. Start adding support for RPMs that do not get auto-updates. (e.g. PeaZip, Valentina Studio, etc...)
