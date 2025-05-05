@@ -44,6 +44,11 @@ var (
 // ETC_DIR is the directory where rpm-get will store repositories.
 const ETC_DIR string = "/etc/rpm-get"
 
+// TODO: Add support for Zypper repos
+
+// YUM_REPOS_DIR is the directory where rpm-get will store repositories.
+const YUM_REPOS_DIR string = "/etc/yum.repos.d"
+
 // CACHE_DIR is the directory where rpm-get will
 // cache JSON files from GitHub/GitLab.
 // As well as downloaded packages.
@@ -422,4 +427,65 @@ func reinstallPkg(pkg string) {
     if err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else { println(out) }
+}
+
+// addRepo adds the given RPM repo to the YUM repos directory.
+func addRepo(repoUrl string) {
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    }
+
+    repoName := strings.Split(repoUrl, "/")[-0]
+    tmpFilePath := filepath.Join(YUM_REPOS_DIR, repoName + ".tmp")
+    filePath := filepath.Join(YUM_REPOS_DIR, repoName)
+    request, _ := http.NewRequest("", repoUrl, nil)
+    request.Header.Set("User-Agent", UserAgent)
+
+    // Download packages-list.json
+    lo.TryCatch(func() error { // try
+        resp, _ := http.DefaultClient.Do(request)
+        //nolint:all
+        defer resp.Body.Close()
+
+        file, _ := os.OpenFile(tmpFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+        //nolint:all
+        defer file.Close()
+
+        bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading RPM repo...")
+        //nolint:all
+        io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+        return nil
+    }, func() { // catch
+        h.Printc("Unable to update packages list!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    })
+
+    if err := os.Rename(tmpFilePath, filePath); err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+    } else {
+        msg := fmt.Sprintf("Successfully added the repo for %s", Project)
+        h.Printc(msg, h.INFO, true)
+    }
+}
+
+func addCoprRepo(repoName string) {
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    }
+
+    cmd := which("sudo") + " " + which("dnf")
+    args := []string { "copr", "enable", "-y", repoName }
+    command := exec.Command(cmd, args...)
+    out, err := command.Output()
+
+    if err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+    } else {
+        println(out)
+        msg := fmt.Sprintf("Successfully added the repo for %s\n", Project)
+        h.Printc(msg, h.INFO, true)
+    }
 }
