@@ -134,7 +134,6 @@ func isAdmin() bool {
 func which(cmd string) string {
     result, err := exec.LookPath(cmd)
     if err != nil { return "" }
-
     return result
 }
 
