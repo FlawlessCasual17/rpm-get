@@ -363,6 +363,7 @@ func checkUpdates() {
     listHash := getSha256Hash(filePath)
 
     if tmpListHash != listHash {
+        // Attempt to move the downloaded file to the existing file
         if err := os.Rename(tmpFilePath, filePath); err != nil {
             h.Printc(err.Error(), h.ERROR, true)
         } else {
