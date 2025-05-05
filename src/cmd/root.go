@@ -306,8 +306,8 @@ func installPkg(pkg string) {
     cmd := which("sudo") + " " + which("dnf")
     args := []string { "install", "-y", pkg }
     command := exec.Command(cmd, args...)
-
     out, err := command.Output()
+
     if err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else { println(out) }
@@ -323,8 +323,8 @@ func upgradePkg(pkgs []string) {
     cmd := which("sudo") + " " + which("dnf")
     args := []string { "install", "-y", strings.Join(pkgs, " ") }
     command := exec.Command(cmd, args...)
-
     out, err := command.Output()
+
     if err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else { println(out) }
