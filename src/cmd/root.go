@@ -390,6 +390,7 @@ func checkUpdates() {
     }
 }
 
+// removePkg removes the requested RPM package.
 func removePkg(pkg string) {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
@@ -398,6 +399,23 @@ func removePkg(pkg string) {
 
     cmd := which("sudo") + " " + which("dnf")
     args := []string { "remove", "-y", pkg }
+    command := exec.Command(cmd, args...)
+    out, err := command.Output()
+
+    if err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+    } else { println(out) }
+}
+
+// reinstallPkg reinstalls the requested RPM package that is already installed.
+func reinstallPkg(pkg string) {
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    }
+
+    cmd := which("sudo") + " " + which("dnf")
+    args := []string { "reinstall", "-y", pkg }
     command := exec.Command(cmd, args...)
     out, err := command.Output()
 
