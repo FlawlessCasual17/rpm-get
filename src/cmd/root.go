@@ -29,6 +29,8 @@ var (
     RelType = ""
     Creator = ""
     ProjectId = ""
+    ConfigDir = filepath.Join(os.Getenv("HOME"), ".config/rpm-get")
+    ConfigFile = filepath.Join(ConfigDir, "config.json")
     // UserAgent is the user agent string used for HTTP requests.
     UserAgent = fmt.Sprintf(
         "Mozilla/5.0 (X11; Linux %s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -48,6 +50,9 @@ const CACHE_DIR string = "/var/cache/rpm-get"
 // HOST_CPU is the host CPU architecture.
 const HOST_CPU string = runtime.GOARCH
 
+// MAIN_REPO is the main repository for rpm-get.
+const MAIN_REPO string = "https://github.com/FlawlessCasual17/rpm-get"
+
 var rootCmd = &cobra.Command {
     Use: "rpm-get",
     Short: "rpm-get is a CLI tool for downloading and managing RPM packages.",
@@ -61,7 +66,7 @@ var rootCmd = &cobra.Command {
 
 func Execute() {
     if err := rootCmd.Execute(); err != nil {
-        h.Printc(err, h.ERROR, false)
+        h.Printc(err.Error(), h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     }
 }
@@ -111,8 +116,8 @@ func init() {
 
 // getEnv returns the value of the environment variable. Empty string if not found.
 func getEnv(key string) string {
-    v, ok := os.LookupEnv(key)
-    return lo.Ternary(ok, v, "")
+    result, ok := os.LookupEnv(key)
+    return lo.Ternary(ok, result, "")
 }
 
 // spellcheck: ignore
@@ -128,26 +133,23 @@ func isAdmin() bool {
 // PATH and prints an error if it's not found.
 func which(cmd string) string {
     result, err := exec.LookPath(cmd)
-    msg := fmt.Sprintf("Command `%s` not found in PATH. Exiting...", cmd)
-
-    if err != nil {
-        h.Printc(msg, h.ERROR, false)
-        return ""
-    }
+    if err != nil { return "" }
 
     return result
 }
 
 // createCacheDir creates the cache directory.
 func createCacheDir() {
-    err := os.MkdirAll(CACHE_DIR, 0755)
-    if err != nil { h.Printc("Unable to create cache dir!", h.FATAL, false) }
+    if err := os.MkdirAll(CACHE_DIR, 0755); err != nil {
+        h.Printc("Unable to create cache dir!", h.FATAL, false)
+    }
 }
 
 // createEtcDir creates the etc directory.
 func createEtcDir() {
-    err := os.MkdirAll(ETC_DIR, 0755)
-    if err != nil { h.Printc("Unable to create etc dir!", h.FATAL, false) }
+    if err := os.MkdirAll(ETC_DIR, 0755); err != nil {
+        h.Printc("Unable to create etc dir!", h.FATAL, false)
+    }
 }
 
 // getReleases retrieves the list of releases from the GitHub/GitLab API.
@@ -190,7 +192,6 @@ func getReleases() {
 
         // NOTE: Might switch to "github.com/cheggaaa/pb" if this doesn't meet my needs.
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        h.Printc("Downloading...", h.INFO, true)
         //nolint:all
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
@@ -203,8 +204,9 @@ func getReleases() {
     if rateLimited(feedbackMsg) {
         h.Printc("API rate limit exceeded!", h.WARNING, true)
         h.Printc("Deleting cache file...", h.INFO, true)
-        err := os.Remove(cacheFilePath)
-        if err != nil { h.Printc(err.Error(), h.ERROR, false) }
+        if err := os.Remove(cacheFilePath); err != nil {
+            h.Printc(err.Error(), h.ERROR, false)
+        }
     }
 }
 
@@ -284,7 +286,6 @@ func downloadRpm(url string, filePath string) {
         defer file.Close()
 
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        h.Printc("Downloading...", h.INFO, true)
         //nolint:all
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
@@ -296,14 +297,14 @@ func downloadRpm(url string, filePath string) {
 }
 
 // installPkg installs the requested RPM package.
-func installPkg(filePath string) {
+func installPkg(pkg string) {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     }
 
     cmd := which("sudo") + " " + which("dnf")
-    args := []string { "install", "-y", filePath }
+    args := []string { "install", "-y", pkg }
     command := exec.Command(cmd, args...)
 
     out, err := command.Output()
@@ -313,14 +314,14 @@ func installPkg(filePath string) {
 }
 
 // upgradePkg upgrades the given RPM packages.
-func upgradePkg(pkgNames []string) {
+func upgradePkg(pkgs []string) {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     }
 
     cmd := which("sudo") + " " + which("dnf")
-    args := []string { "upgrade", "-y", strings.Join(pkgNames, " ") }
+    args := []string { "install", "-y", strings.Join(pkgs, " ") }
     command := exec.Command(cmd, args...)
 
     out, err := command.Output()
@@ -329,6 +330,38 @@ func upgradePkg(pkgNames []string) {
     } else { println(out) }
 }
 
-// func checkUpdates() {
-//     // TODO:This should clone the main repo and check if there are any brand-new packages
-// }
+func checkUpdates() {
+    url := MAIN_REPO + "/raw/refs/heads/master/packages/packages-list.json"
+    tmpFilePath := filepath.Join(ConfigDir, "packages-list.json.tmp")
+    filePath := filepath.Join(ConfigDir, "packages-list.json")
+    request, _ := http.NewRequest("", url, nil)
+    request.Header.Set("User-Agent", UserAgent)
+
+    lo.TryCatch(func() error { // try
+        resp, _ := http.DefaultClient.Do(request)
+        //nolint:all
+        defer resp.Body.Close()
+
+        file, _ := os.OpenFile(tmpFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+        //nolint:all
+        defer file.Close()
+
+        bar := progressbar.DefaultBytes(resp.ContentLength, "Updating packages list...")
+        //nolint:all
+        io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+        return nil
+    }, func() { // catch
+        h.Printc("Unable to update packages list!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    })
+
+    tmpListContent := (func() string { v, _ := os.ReadFile(tmpFilePath); return string(v) })()
+    listContent := (func() string { v, _ := os.ReadFile(filePath); return string(v) })()
+
+    if tmpListContent != listContent {
+        if err := os.Rename(tmpFilePath, filePath); err != nil {
+            h.Printc(err.Error(), h.ERROR, true)
+        } else { h.Printc("Packages list was sucessfully updated!", h.INFO, true) }
+    } else { h.Printc("Packages list is already up to date!", h.INFO, true) }
+}
