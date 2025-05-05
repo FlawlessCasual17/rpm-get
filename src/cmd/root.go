@@ -470,6 +470,7 @@ func addRepo(repoUrl string) {
     }
 }
 
+// addCoprRepo adds the given Fedora COPR repo to the YUM repos directory.
 func addCoprRepo(repoName string) {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
