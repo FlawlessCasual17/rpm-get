@@ -271,6 +271,21 @@ func scrapeWebsite(url string, regex string, elementRefs []string) string {
     return result
 }
 
+// getSha256Hash returns the SHA256 hash of the given file.
+func getSha256Hash(filePath string) string {
+    file, _ := os.Open(filePath)
+    //nolint:all
+    defer file.Close()
+
+    hash := sha256.New()
+    if _, err := io.Copy(hash, file); err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+        return ""
+    }
+
+    return hex.EncodeToString(hash.Sum(nil))
+}
+
 // downloadPkg downloads the requested RPM package.
 func downloadPkg(url string, filePath string) {
     cacheFilePath := filepath.Join(CACHE_DIR, filePath)
@@ -375,17 +390,18 @@ func checkUpdates() {
     }
 }
 
-// getSha256Hash returns the SHA256 hash of the given file.
-func getSha256Hash(filePath string) string {
-    file, _ := os.Open(filePath)
-    //nolint:all
-    defer file.Close()
-
-    hash := sha256.New()
-    if _, err := io.Copy(hash, file); err != nil {
-        h.Printc(err.Error(), h.ERROR, false)
-        return ""
+func removePkg(pkg string) {
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
     }
 
-    return hex.EncodeToString(hash.Sum(nil))
+    cmd := which("sudo") + " " + which("dnf")
+    args := []string { "remove", "-y", pkg }
+    command := exec.Command(cmd, args...)
+    out, err := command.Output()
+
+    if err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+    } else { println(out) }
 }
