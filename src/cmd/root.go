@@ -381,8 +381,10 @@ func getSha256Hash(filePath string) string {
     defer file.Close()
 
     hash := sha256.New()
-    //nolint:all
-    io.Copy(hash, file)
+    if _, err := io.Copy(hash, file); err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+        return ""
+    }
 
     return hex.EncodeToString(hash.Sum(nil))
 }
