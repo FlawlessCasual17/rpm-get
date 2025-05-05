@@ -27,12 +27,14 @@ import (
 const VERSION string = "0.0.1"
 
 var (
+    App = ""
     Project = ""
     RelType = ""
     Creator = ""
     ProjectId = ""
     ConfigDir = filepath.Join(os.Getenv("HOME"), ".config/rpm-get")
     ConfigFile = filepath.Join(ConfigDir, "config.json")
+    DataDir = filepath.Join(os.Getenv("HOME"), ".local/share/rpm-get")
     // UserAgent is the user agent string used for HTTP requests.
     UserAgent = fmt.Sprintf(
         "Mozilla/5.0 (X11; Linux %s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -160,7 +162,7 @@ func createEtcDir() {
 
 // getReleases retrieves the list of releases from the GitHub/GitLab API.
 func getReleases() {
-    filePath := fmt.Sprintf("%s_cache.json", Project)
+    filePath := App + "_cache.json"
     cacheFilePath := filepath.Join(CACHE_DIR, filePath)
     url := ""
     feedbackMsg := ""
@@ -170,12 +172,12 @@ func getReleases() {
     switch RelType {
     case "github":
         baseUrl := "https://api.github.com/repos"
-        url = fmt.Sprintf("%s/%s/%s/releases/latest", baseUrl, Creator, Project)
+        url = baseUrl + fmt.Sprintf("/%s/%s/releases/latest", Creator, Project)
         request.Header.Set("Authorization", GhHeaderAuth)
         feedbackMsg = parseJson(cacheFilePath, rateLimitedMsg {})
     case "gitlab":
         baseUrl := "https://gitlab.com/api/v4/projects"
-        url = fmt.Sprintf("%s/%s/releases/permalink/latest", baseUrl, ProjectId)
+        url = baseUrl + fmt.Sprintf("/%s/releases/permalink/latest", ProjectId)
         request.Header.Set("PRIVATE-TOKEN", GlHeaderAuth)
         v, _ := os.ReadFile(cacheFilePath);
         feedbackMsg = string(v)
@@ -351,8 +353,9 @@ func upgradePkg(pkgs []string) {
     } else { println(out) }
 }
 
-// checkUpdates checks for updates to the packages list.
-func checkUpdates() {
+// getUpdates checks for updates to the packages list.
+func getUpdates() {
+    updateSuccess := false
     url := MAIN_REPO + "/raw/refs/heads/master/packages/packages-list.json"
     tmpFilePath := filepath.Join(ConfigDir, "packages-list.json.tmp")
     filePath := filepath.Join(ConfigDir, "packages-list.json")
@@ -389,9 +392,49 @@ func checkUpdates() {
             h.Printc(err.Error(), h.ERROR, true)
         } else {
             h.Printc("Packages list was sucessfully updated!", h.INFO, true)
+            updateSuccess = true
         }
-    } else {
-        h.Printc("Packages list is already up to date!", h.INFO, true)
+    } else { h.Printc("Packages list is already up to date!", h.INFO, true) }
+
+    if updateSuccess {
+        data, _ := os.ReadFile(filePath)
+
+        pkgs := []string {}
+        if err := json.Unmarshal(data, &pkgs); err != nil {
+            h.Printc(err.Error(), h.ERROR, false)
+            os.Exit(h.ERROR_EXIT_CODE)
+        }
+
+        getPkgManifests(pkgs)
+    }
+}
+
+func getPkgManifests(pkgs []string) {
+    h.Printc("Downloading package manifests...", h.PROGRESS, false)
+    for _, pkg := range pkgs {
+        url := MAIN_REPO + fmt.Sprintf("/raw/refs/heads/master/packages/manifests/%s.json", pkg)
+        baseName := strings.Split(url, "/")[-0]
+        filePath := filepath.Join(DataDir, baseName)
+        request, _ := http.NewRequest("", url, nil)
+
+        lo.TryCatch(func() error { // try
+            resp, _ := http.DefaultClient.Do(request)
+            //nolint:all
+            defer resp.Body.Close()
+
+            file, _ := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
+            //nolint:all
+            defer file.Close()
+
+            bar := progressbar.DefaultBytes(resp.ContentLength, pkg)
+            //nolint:all
+            io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+            return nil
+        }, func() { // catch
+            h.Printc("Unable to update packages list!", h.ERROR, false)
+            os.Exit(h.ERROR_EXIT_CODE)
+        })
     }
 }
 
@@ -436,9 +479,9 @@ func addRepo(repoUrl string) {
         os.Exit(h.ERROR_EXIT_CODE)
     }
 
-    repoName := strings.Split(repoUrl, "/")[-0]
-    tmpFilePath := filepath.Join(YUM_REPOS_DIR, repoName + ".tmp")
-    filePath := filepath.Join(YUM_REPOS_DIR, repoName)
+    baseName := strings.Split(repoUrl, "/")[-0]
+    tmpFilePath := filepath.Join(YUM_REPOS_DIR, baseName + ".tmp")
+    filePath := filepath.Join(YUM_REPOS_DIR, baseName)
     request, _ := http.NewRequest("", repoUrl, nil)
     request.Header.Set("User-Agent", UserAgent)
 
@@ -465,7 +508,7 @@ func addRepo(repoUrl string) {
     if err := os.Rename(tmpFilePath, filePath); err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else {
-        msg := fmt.Sprintf("Successfully added the repo for %s", Project)
+        msg := fmt.Sprintf("Successfully added the repo for %s\n", App)
         h.Printc(msg, h.INFO, true)
     }
 }
@@ -486,7 +529,7 @@ func addCoprRepo(repoName string) {
         h.Printc(err.Error(), h.ERROR, false)
     } else {
         println(out)
-        msg := fmt.Sprintf("Successfully added the repo for %s\n", Project)
+        msg := fmt.Sprintf("Successfully added the repo for %s\n", App)
         h.Printc(msg, h.INFO, true)
     }
 }
