@@ -1,6 +1,8 @@
 package cmd
 
 import (
+    "crypto/sha256"
+    "encoding/hex"
     "encoding/json"
     "flag"
     "fmt"
@@ -336,6 +338,7 @@ func checkUpdates() {
     request, _ := http.NewRequest("", url, nil)
     request.Header.Set("User-Agent", UserAgent)
 
+    // Download packages-list.json
     lo.TryCatch(func() error { // try
         resp, _ := http.DefaultClient.Do(request)
         //nolint:all
@@ -355,12 +358,30 @@ func checkUpdates() {
         os.Exit(h.ERROR_EXIT_CODE)
     })
 
-    tmpListContent := (func() string { v, _ := os.ReadFile(tmpFilePath); return string(v) })()
-    listContent := (func() string { v, _ := os.ReadFile(filePath); return string(v) })()
+    // Compare the hashes of the downloaded file and the existing file
+    tmpListHash := getSha256Hash(tmpFilePath)
+    listHash := getSha256Hash(filePath)
 
-    if tmpListContent != listContent {
+    if tmpListHash != listHash {
         if err := os.Rename(tmpFilePath, filePath); err != nil {
             h.Printc(err.Error(), h.ERROR, true)
-        } else { h.Printc("Packages list was sucessfully updated!", h.INFO, true) }
-    } else { h.Printc("Packages list is already up to date!", h.INFO, true) }
+        } else {
+            h.Printc("Packages list was sucessfully updated!", h.INFO, true)
+        }
+    } else {
+        h.Printc("Packages list is already up to date!", h.INFO, true)
+    }
+}
+
+// getSha256Hash returns the SHA256 hash of the given file.
+func getSha256Hash(filePath string) string {
+    file, _ := os.Open(filePath)
+    //nolint:all
+    defer file.Close()
+
+    hash := sha256.New()
+    //nolint:all
+    io.Copy(hash, file)
+
+    return hex.EncodeToString(hash.Sum(nil))
 }
