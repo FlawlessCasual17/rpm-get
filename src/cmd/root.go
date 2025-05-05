@@ -271,8 +271,8 @@ func scrapeWebsite(url string, regex string, elementRefs []string) string {
     return result
 }
 
-// downloadRpm downloads the requested RPM package.
-func downloadRpm(url string, filePath string) {
+// downloadPkg downloads the requested RPM package.
+func downloadPkg(url string, filePath string) {
     cacheFilePath := filepath.Join(CACHE_DIR, filePath)
     request, _ := http.NewRequest("", url, nil)
     request.Header.Set("User-Agent", UserAgent)
@@ -331,6 +331,7 @@ func upgradePkg(pkgs []string) {
     } else { println(out) }
 }
 
+// checkUpdates checks for updates to the packages list.
 func checkUpdates() {
     url := MAIN_REPO + "/raw/refs/heads/master/packages/packages-list.json"
     tmpFilePath := filepath.Join(ConfigDir, "packages-list.json.tmp")
