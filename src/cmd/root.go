@@ -32,6 +32,7 @@ var (
     RelType = ""
     Creator = ""
     ProjectId = ""
+    RepoName = ""
     ConfigDir = filepath.Join(os.Getenv("HOME"), ".config/rpm-get")
     ConfigFile = filepath.Join(ConfigDir, "config.json")
     DataDir = filepath.Join(os.Getenv("HOME"), ".local/share/rpm-get")
@@ -190,7 +191,11 @@ func getReleases() {
     // NOTE: `//nolint:all` is used to suppress annoying linter warnings/errors.
 
     lo.TryCatch(func() error { // try
-        resp, _ := http.DefaultClient.Do(request)
+        resp, respErr := http.DefaultClient.Do(request)
+        if respErr != nil {
+            h.Printc("Request failed!", h.ERROR, false)
+            return respErr
+        }
         //nolint:all
         defer resp.Body.Close()
 
@@ -254,7 +259,11 @@ func scrapeWebsite(url string, regex string, elementRefs []string) string {
     result := ""
 
     lo.TryCatch(func() error { // try
-        resp, _ := http.DefaultClient.Do(request)
+        resp, respErr := http.DefaultClient.Do(request)
+        if respErr != nil {
+            h.Printc("Request failed!", h.ERROR, false)
+            return respErr
+        }
         //nolint:all
         defer resp.Body.Close()
 
@@ -300,7 +309,11 @@ func downloadPkg(url string, filePath string) {
     request.Header.Set("User-Agent", UserAgent)
 
     lo.TryCatch(func() error { // try
-        resp, _ := http.DefaultClient.Do(request)
+        resp, respErr := http.DefaultClient.Do(request)
+        if respErr != nil {
+            h.Printc("Request failed!", h.ERROR, false)
+            return respErr
+        }
         //nolint:all
         defer resp.Body.Close()
 
@@ -364,7 +377,11 @@ func getUpdates() {
 
     // Download packages-list.json
     lo.TryCatch(func() error { // try
-        resp, _ := http.DefaultClient.Do(request)
+        resp, respErr := http.DefaultClient.Do(request)
+        if respErr != nil {
+            h.Printc("Request failed!", h.ERROR, false)
+            return respErr
+        }
         //nolint:all
         defer resp.Body.Close()
 
@@ -410,7 +427,7 @@ func getUpdates() {
 }
 
 func getPkgManifests(pkgs []string) {
-    h.Printc("Downloading package manifests...", h.PROGRESS, false)
+    h.Printc("Downloading package manifests...", h.INFO, false)
     for _, pkg := range pkgs {
         url := MAIN_REPO + fmt.Sprintf("/raw/refs/heads/master/packages/manifests/%s.json", pkg)
         baseName := strings.Split(url, "/")[-0]
@@ -418,7 +435,11 @@ func getPkgManifests(pkgs []string) {
         request, _ := http.NewRequest("", url, nil)
 
         lo.TryCatch(func() error { // try
-            resp, _ := http.DefaultClient.Do(request)
+            resp, err := http.DefaultClient.Do(request)
+            if err != nil {
+                h.Printc(err.Error(), h.ERROR, false)
+                return err
+            }
             //nolint:all
             defer resp.Body.Close()
 
@@ -487,7 +508,11 @@ func addRepo(repoUrl string) {
 
     // Download packages-list.json
     lo.TryCatch(func() error { // try
-        resp, _ := http.DefaultClient.Do(request)
+        resp, respErr := http.DefaultClient.Do(request)
+        if respErr != nil {
+            h.Printc("Request failed!", h.ERROR, false)
+            return respErr
+        }
         //nolint:all
         defer resp.Body.Close()
 
@@ -508,28 +533,47 @@ func addRepo(repoUrl string) {
     if err := os.Rename(tmpFilePath, filePath); err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else {
+        RepoName = baseName
         msg := fmt.Sprintf("Successfully added the repo for %s\n", App)
         h.Printc(msg, h.INFO, true)
     }
 }
 
 // addCoprRepo adds the given Fedora COPR repo to the YUM repos directory.
-func addCoprRepo(repoName string) {
+func addCoprRepo(username string, project string) {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     }
 
     cmd := which("sudo") + " " + which("dnf")
-    args := []string { "copr", "enable", "-y", repoName }
+    args := []string { "copr", "enable", "-y", username + "/" + project }
     command := exec.Command(cmd, args...)
     out, err := command.Output()
 
     if err != nil {
         h.Printc(err.Error(), h.ERROR, false)
     } else {
+        RepoName = fmt.Sprintf("_copr:copr.fedorainfracloud.org:%s:%s", username, project)
         println(out)
         msg := fmt.Sprintf("Successfully added the repo for %s\n", App)
         h.Printc(msg, h.INFO, true)
+    }
+}
+
+func removeRepo() bool {
+    if !isAdmin() {
+        h.Printc("rpm-get must be run as root!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
+    }
+
+    if err := os.Remove(RepoName); err != nil {
+        msg := fmt.Sprintf("Failed to remove the repo for %s\n", App)
+        h.Printc(msg, h.ERROR, false)
+        return false
+    } else {
+        msg := fmt.Sprintf("Successfully removed the repo for %s\n", App)
+        h.Printc(msg, h.INFO, true)
+        return true
     }
 }
