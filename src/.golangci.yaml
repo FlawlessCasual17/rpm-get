@@ -6,7 +6,6 @@ linters:
     - asciicheck
     - bodyclose
     - dupl
-    - err113
     - errcheck
     - errorlint
     - goconst
@@ -14,7 +13,6 @@ linters:
     - ineffassign
     - staticcheck
     - unconvert
-    - unused
     - unparam
     - nestif
     - revive
@@ -37,12 +35,16 @@ linters:
       parameters-are-used: true
       local-variables-are-used: true
       generated-is-used: true
+  # exclusions:
+  #   rules:
+  #     - linters:
+  #         - err113
+  #         -
 
 severity:
   default: error
   rules:
     - linters:
-        - unused
-        - ineffassign
+        # - ineffassign
         - httpresponse
       severity: info

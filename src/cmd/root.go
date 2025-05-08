@@ -17,7 +17,10 @@ import (
 
     // third-party imports
     h "github.com/FlawlessCasual17/rpm-get/helpers"
-    "github.com/PuerkitoBio/goquery"
+    "github.com/PaesslerAG/jsonpath"
+    "github.com/antchfx/htmlquery"
+    "github.com/antchfx/xmlquery"
+    "github.com/antchfx/xpath"
     "github.com/samber/lo"
     "github.com/schollz/progressbar/v3"
     "github.com/spf13/cobra"
@@ -27,6 +30,7 @@ import (
 const VERSION string = "0.0.1"
 
 var (
+    isHtml = false
     App = ""
     Project = ""
     RelType = ""
@@ -49,7 +53,7 @@ const ETC_DIR string = "/etc/rpm-get"
 
 // TODO: Add support for Zypper repos
 
-// YUM_REPOS_DIR is the directory where rpm-get will store repositories.
+// YUM_REPOS_DIR is the directory where rpm-get will store RPM repositories.
 const YUM_REPOS_DIR string = "/etc/yum.repos.d"
 
 // CACHE_DIR is the directory where rpm-get will
@@ -62,6 +66,9 @@ const HOST_CPU string = runtime.GOARCH
 
 // MAIN_REPO is the main repository for rpm-get.
 const MAIN_REPO string = "https://github.com/FlawlessCasual17/rpm-get"
+
+// PKGS_REPO is the repository for package manifests.
+const PKGS_REPO string = "https://github.com/FlawlessCasual17/rpm-get.Packages"
 
 var rootCmd = &cobra.Command {
     Use: "rpm-get",
@@ -165,30 +172,31 @@ func createEtcDir() {
 func getReleases() {
     filePath := App + "_cache.json"
     cacheFilePath := filepath.Join(CACHE_DIR, filePath)
-    url := ""
-    feedbackMsg := ""
-    request, _ := http.NewRequest("", url, nil)
-    request.Header.Set("User-Agent", UserAgent)
+    url, feedbackMsg, key, value := "", "", "", ""
 
     switch RelType {
     case "github":
         baseUrl := "https://api.github.com/repos"
         url = baseUrl + fmt.Sprintf("/%s/%s/releases/latest", Creator, Project)
-        request.Header.Set("Authorization", GhHeaderAuth)
-        feedbackMsg = parseJson(cacheFilePath, rateLimitedMsg {})
+        key = "Authorization"; value = GhHeaderAuth
+        feedbackMsg = parseJsonFile(cacheFilePath, "$.message")
     case "gitlab":
         baseUrl := "https://gitlab.com/api/v4/projects"
         url = baseUrl + fmt.Sprintf("/%s/releases/permalink/latest", ProjectId)
-        request.Header.Set("PRIVATE-TOKEN", GlHeaderAuth)
+        key = "PRIVATE-TOKEN"; value = GlHeaderAuth
         v, _ := os.ReadFile(cacheFilePath);
         feedbackMsg = string(v)
     }
+
+    request, _ := http.NewRequest("", url, nil)
+    request.Header.Set("User-Agent", UserAgent)
+    request.Header.Set(key, value)
 
     if _, err := os.Stat(CACHE_DIR); err != nil && os.IsNotExist(err) {
         createCacheDir()
     }
 
-    // NOTE: `//nolint:all` is used to suppress annoying linter warnings/errors.
+    // NOTE: `//nolint:errcheck` is used to suppress annoying linter warnings/errors.
 
     lo.TryCatch(func() error { // try
         resp, respErr := http.DefaultClient.Do(request)
@@ -196,16 +204,16 @@ func getReleases() {
             h.Printc("Request failed!", h.ERROR, false)
             return respErr
         }
-        //nolint:all
+        //nolint:errcheck
         defer resp.Body.Close()
 
         file, _ := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
-        //nolint:all
+        //nolint:errcheck
         defer file.Close()
 
         // NOTE: Might switch to "github.com/cheggaaa/pb" if this doesn't meet my needs.
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        //nolint:all
+        //nolint:errcheck
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
         return nil
@@ -223,74 +231,127 @@ func getReleases() {
     }
 }
 
-//nolint:unused
-type rateLimitedMsg struct {
-    message string
-}
-
-// TODO: Add handling for more complex JSON queries
-
-// parseJson parses the JSON file at the given path.
-func parseJson(filePath string, jsonPath any) string {
-    switch obj := jsonPath.(type) {
-    case rateLimitedMsg:
-        data, _ := os.ReadFile(filePath)
-
-        err := json.Unmarshal(data, &obj)
-        if err != nil { h.Printc(err.Error(), h.FATAL, false) }
-
-        return obj.message
-    default:
-        return ""
-    }
-}
-
 // rateLimited checks if the given feedback message contains a rate limit error.
 func rateLimited(feedbackMsg string) bool {
     targets := []string { "API rate limit exceeded", "API rate limit exceeded for" }
     return strings.Contains(feedbackMsg, targets[0]) || strings.Contains(feedbackMsg, targets[1])
 }
 
-// scrapeWebsite parses a website and returns the matches of a given regex.
-func scrapeWebsite(url string, regex string, elementRefs []string) string {
-    newRegex, _ := regexp.Compile(regex)
-    request, _ := http.NewRequest("", url, nil)
-    request.Header.Set("User-Agent", UserAgent)
+// parseJsonFile parses a JSON file using a given JSONPath and returns the result.
+func parseJsonFile(filePath string, jsonPath string) string {
     result := ""
+    data := any (nil)
+    content, _ := os.ReadFile(filePath)
+
+    //nolint:errcheck
+    json.Unmarshal(content, &data)
+    jsonContent, err := jsonpath.Get(jsonPath, data)
+    if err != nil {
+        h.Printc(err.Error(), h.ERROR, false)
+        return result
+    }
+
+    result = fmt.Sprintf("%v", jsonContent)
+
+    return result
+}
+
+func getWebContent(url string) ([]byte, error) {
+    result := []byte {}
+    fetchError := error (nil)
 
     lo.TryCatch(func() error { // try
+        request, requestErr := http.NewRequest("GET", url, nil)
+        if requestErr != nil {
+            h.Printc("Failed to create HTTP request!", h.ERROR, false)
+            fetchError = fmt.Errorf("Failed to create HTTP request: %w", requestErr)
+            return fetchError
+        }
+        request.Header.Set("User-Agent", UserAgent)
+
         resp, respErr := http.DefaultClient.Do(request)
         if respErr != nil {
-            h.Printc("Request failed!", h.ERROR, false)
-            return respErr
+            h.Printc("HTTP request failed!", h.ERROR, false)
+            fetchError = fmt.Errorf("HTTP request failed: %w", respErr)
+            return fetchError
         }
-        //nolint:all
+        //nolint:errcheck
         defer resp.Body.Close()
 
-        doc, err := goquery.NewDocumentFromReader(resp.Body)
-        if err != nil { h.Printc(err.Error(), h.WARNING, true) }
+        // Read the response body
+        respBody, err := io.ReadAll(resp.Body)
+        if err != nil {
+            h.Printc("Failed to read response body!", h.ERROR, false)
+            fetchError = fmt.Errorf("Failed to read response body: %w", err)
+            return fetchError
+        }
 
-        // Parse HTML
-        selection := doc.Find(elementRefs[0])
-        selection.Each(func(i int, s *goquery.Selection) {
-            element := s.Find(elementRefs[1]).Text()
-            match := newRegex.FindString(element)
-            if newRegex.MatchString(element) { result = match }
-        })
+        result = respBody
 
         return nil
     }, func() { // catch
-        h.Printc("Failed to scrape the requested website!", h.ERROR, false)
-        os.Exit(h.ERROR_EXIT_CODE)
+        h.Printc("An unexpected error occurred!", h.ERROR, false)
+        fetchError = fmt.Errorf("An unexpected error occurred")
     })
 
-    return result
+    return result, fetchError
+}
+
+// parseHtml parses HTML content using XPath and returns the matches of a given regex.
+func parseHtml(content []byte, regexStr string, xpathExpr string) (string, error) {
+    isHtml = true
+    v, err := parseXml(content, regexStr, xpathExpr)
+    return v, err
+}
+
+// parseXml parses XML (or HTML) content using XPath and returns the matches of a given regex.
+func parseXml(content []byte, regexStr string, xpathStr string) (string, error) {
+    result, innerText := "", ""
+
+    // Compile regex from string
+    regex, regexErr := regexp.Compile(regexStr)
+    if regexErr != nil {
+        h.Printc("Failed to parse regex!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
+    }
+
+    // Compile xpath from string
+    xpathExpr, xpathErr := xpath.Compile(xpathStr)
+    if xpathErr != nil {
+        h.Printc("Failed to parse xpath!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse xpath: %w", xpathErr)
+    }
+
+    if isHtml {
+        doc, err := htmlquery.Parse(strings.NewReader(string(content)))
+        if err != nil {
+            h.Printc("Failed to parse HTML!", h.ERROR, false)
+            return result, fmt.Errorf("Failed to parse HTML: %w", err)
+        }
+
+        node := htmlquery.QuerySelector(doc, xpathExpr)
+        innerText = htmlquery.InnerText(node)
+    } else {
+        doc, err := xmlquery.Parse(strings.NewReader(string(content)))
+        if err != nil {
+            h.Printc("Failed to parse XML!", h.ERROR, false)
+            return result, fmt.Errorf("Failed to parse XML: %w", err)
+        }
+
+        node := xmlquery.QuerySelector(doc, xpathExpr)
+        innerText = node.InnerText()
+    }
+
+    matches := regex.FindString(innerText)
+    if regex.MatchString(innerText) { result = matches }
+
+    return result, nil
 }
 
 // getSha256Hash returns the SHA256 hash of the given file.
 func getSha256Hash(filePath string) string {
     file, _ := os.Open(filePath)
-    //nolint:all
+    //nolint:errcheck
     defer file.Close()
 
     hash := sha256.New()
@@ -305,29 +366,29 @@ func getSha256Hash(filePath string) string {
 // downloadPkg downloads the requested RPM package.
 func downloadPkg(url string, filePath string) {
     cacheFilePath := filepath.Join(CACHE_DIR, filePath)
-    request, _ := http.NewRequest("", url, nil)
-    request.Header.Set("User-Agent", UserAgent)
 
     lo.TryCatch(func() error { // try
+        request, _ := http.NewRequest("GET", url, nil)
+        request.Header.Set("User-Agent", UserAgent)
         resp, respErr := http.DefaultClient.Do(request)
         if respErr != nil {
             h.Printc("Request failed!", h.ERROR, false)
             return respErr
         }
-        //nolint:all
+        //nolint:errcheck
         defer resp.Body.Close()
 
         file, _ := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
-        //nolint:all
+        //nolint:errcheck
         defer file.Close()
 
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        //nolint:all
+        //nolint:errcheck
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
         return nil
     }, func() { // catch
-        h.Printc("Failed to download the requested RPM!", h.ERROR, false)
+        h.Printc("Failed to download the requested RPM package!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     })
 }
@@ -369,7 +430,7 @@ func upgradePkg(pkgs []string) {
 // getUpdates checks for updates to the packages list.
 func getUpdates() {
     updateSuccess := false
-    url := MAIN_REPO + "/raw/refs/heads/master/packages/packages-list.json"
+    url := PKGS_REPO + "/raw/refs/heads/master/packages-list.json"
     tmpFilePath := filepath.Join(ConfigDir, "packages-list.json.tmp")
     filePath := filepath.Join(ConfigDir, "packages-list.json")
     request, _ := http.NewRequest("", url, nil)
@@ -382,15 +443,15 @@ func getUpdates() {
             h.Printc("Request failed!", h.ERROR, false)
             return respErr
         }
-        //nolint:all
+        //nolint:errcheck
         defer resp.Body.Close()
 
         file, _ := os.OpenFile(tmpFilePath, os.O_CREATE|os.O_WRONLY, 0644)
-        //nolint:all
+        //nolint:errcheck
         defer file.Close()
 
         bar := progressbar.DefaultBytes(resp.ContentLength, "Updating packages list...")
-        //nolint:all
+        //nolint:errcheck
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
         return nil
@@ -426,29 +487,30 @@ func getUpdates() {
     }
 }
 
+// getPkgManifests retrieves the manifests for the given packages.
 func getPkgManifests(pkgs []string) {
     h.Printc("Downloading package manifests...", h.INFO, false)
     for _, pkg := range pkgs {
-        url := MAIN_REPO + fmt.Sprintf("/raw/refs/heads/master/packages/manifests/%s.json", pkg)
+        url := PKGS_REPO + fmt.Sprintf("/raw/refs/heads/master/manifests/%s.json", pkg)
         baseName := strings.Split(url, "/")[-0]
         filePath := filepath.Join(DataDir, baseName)
-        request, _ := http.NewRequest("", url, nil)
 
         lo.TryCatch(func() error { // try
+            request, _ := http.NewRequest("GET", url, nil)
             resp, err := http.DefaultClient.Do(request)
             if err != nil {
                 h.Printc(err.Error(), h.ERROR, false)
                 return err
             }
-            //nolint:all
+            //nolint:errcheck
             defer resp.Body.Close()
 
             file, _ := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
-            //nolint:all
+            //nolint:errcheck
             defer file.Close()
 
             bar := progressbar.DefaultBytes(resp.ContentLength, pkg)
-            //nolint:all
+            //nolint:errcheck
             io.Copy(io.MultiWriter(file, bar), resp.Body)
 
             return nil
@@ -503,25 +565,25 @@ func addRepo(repoUrl string) {
     baseName := strings.Split(repoUrl, "/")[-0]
     tmpFilePath := filepath.Join(YUM_REPOS_DIR, baseName + ".tmp")
     filePath := filepath.Join(YUM_REPOS_DIR, baseName)
-    request, _ := http.NewRequest("", repoUrl, nil)
-    request.Header.Set("User-Agent", UserAgent)
 
     // Download packages-list.json
     lo.TryCatch(func() error { // try
+        request, _ := http.NewRequest("GET", repoUrl, nil)
+        request.Header.Set("User-Agent", UserAgent)
         resp, respErr := http.DefaultClient.Do(request)
         if respErr != nil {
             h.Printc("Request failed!", h.ERROR, false)
             return respErr
         }
-        //nolint:all
+        //nolint:errcheck
         defer resp.Body.Close()
 
         file, _ := os.OpenFile(tmpFilePath, os.O_CREATE|os.O_WRONLY, 0644)
-        //nolint:all
+        //nolint:errcheck
         defer file.Close()
 
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading RPM repo...")
-        //nolint:all
+        //nolint:errcheck
         io.Copy(io.MultiWriter(file, bar), resp.Body)
 
         return nil
@@ -534,7 +596,7 @@ func addRepo(repoUrl string) {
         h.Printc(err.Error(), h.ERROR, false)
     } else {
         RepoName = baseName
-        msg := fmt.Sprintf("Successfully added the repo for %s\n", App)
+        msg := fmt.Sprintf("Successfully added the repo for %s", App)
         h.Printc(msg, h.INFO, true)
     }
 }
@@ -556,23 +618,26 @@ func addCoprRepo(username string, project string) {
     } else {
         RepoName = fmt.Sprintf("_copr:copr.fedorainfracloud.org:%s:%s", username, project)
         println(out)
-        msg := fmt.Sprintf("Successfully added the repo for %s\n", App)
+        msg := fmt.Sprintf("Successfully added the repo for %s", App)
         h.Printc(msg, h.INFO, true)
     }
 }
 
+// removeRepo removes the repo of an application from the YUM repos directory.
 func removeRepo() bool {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     }
 
-    if err := os.Remove(RepoName); err != nil {
-        msg := fmt.Sprintf("Failed to remove the repo for %s\n", App)
+    filePath := filepath.Join(YUM_REPOS_DIR, RepoName)
+
+    if err := os.Remove(filePath); err != nil {
+        msg := fmt.Sprintf("Failed to remove the repo for %s", App)
         h.Printc(msg, h.ERROR, false)
         return false
     } else {
-        msg := fmt.Sprintf("Successfully removed the repo for %s\n", App)
+        msg := fmt.Sprintf("Successfully removed the repo for %s", App)
         h.Printc(msg, h.INFO, true)
         return true
     }
