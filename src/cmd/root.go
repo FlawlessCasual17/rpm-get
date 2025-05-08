@@ -3,7 +3,6 @@ package cmd
 import (
     "crypto/sha256"
     "encoding/hex"
-    "encoding/json"
     "flag"
     "fmt"
     "io"
@@ -16,6 +15,7 @@ import (
     "strings"
 
     // third-party imports
+    "github.com/goccy/go-json"
     h "github.com/FlawlessCasual17/rpm-get/helpers"
     "github.com/PaesslerAG/jsonpath"
     "github.com/antchfx/htmlquery"
@@ -157,14 +157,16 @@ func which(cmd string) string {
 // createCacheDir creates the cache directory.
 func createCacheDir() {
     if err := os.MkdirAll(CACHE_DIR, 0755); err != nil {
-        h.Printc("Unable to create cache dir!", h.FATAL, false)
+        h.Printc("Unable to create cache dir!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
     }
 }
 
 // createEtcDir creates the etc directory.
 func createEtcDir() {
     if err := os.MkdirAll(ETC_DIR, 0755); err != nil {
-        h.Printc("Unable to create etc dir!", h.FATAL, false)
+        h.Printc("Unable to create etc dir!", h.ERROR, false)
+        os.Exit(h.ERROR_EXIT_CODE)
     }
 }
 
@@ -179,7 +181,8 @@ func getReleases() {
         baseUrl := "https://api.github.com/repos"
         url = baseUrl + fmt.Sprintf("/%s/%s/releases/latest", Creator, Project)
         key = "Authorization"; value = GhHeaderAuth
-        feedbackMsg = parseJsonFile(cacheFilePath, "$.message")
+        v, _ := parseJsonFile(cacheFilePath, "$.message")
+        feedbackMsg = v
     case "gitlab":
         baseUrl := "https://gitlab.com/api/v4/projects"
         url = baseUrl + fmt.Sprintf("/%s/releases/permalink/latest", ProjectId)
@@ -188,26 +191,27 @@ func getReleases() {
         feedbackMsg = string(v)
     }
 
-    request, _ := http.NewRequest("", url, nil)
-    request.Header.Set("User-Agent", UserAgent)
-    request.Header.Set(key, value)
-
     if _, err := os.Stat(CACHE_DIR); err != nil && os.IsNotExist(err) {
         createCacheDir()
     }
 
-    // NOTE: `//nolint:errcheck` is used to suppress annoying linter warnings/errors.
-
     lo.TryCatch(func() error { // try
-        resp, respErr := http.DefaultClient.Do(request)
-        if respErr != nil {
+        request, _ := http.NewRequest("", url, nil)
+        request.Header.Set("User-Agent", UserAgent)
+        request.Header.Set(key, value)
+        resp, err := http.DefaultClient.Do(request)
+        if err != nil {
             h.Printc("Request failed!", h.ERROR, false)
-            return respErr
+            return fmt.Errorf("Request failed: %w", err)
         }
         //nolint:errcheck
         defer resp.Body.Close()
 
-        file, _ := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+        file, fileErr := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+        if fileErr != nil {
+            h.Printc("Failed to create cache file!", h.ERROR, false)
+            return fmt.Errorf("Failed to create cache file: %w", fileErr)
+        }
         //nolint:errcheck
         defer file.Close()
 
@@ -238,22 +242,30 @@ func rateLimited(feedbackMsg string) bool {
 }
 
 // parseJsonFile parses a JSON file using a given JSONPath and returns the result.
-func parseJsonFile(filePath string, jsonPath string) string {
+func parseJsonFile(filePath string, jsonpathExtr string) (string, error) {
     result := ""
     data := any (nil)
-    content, _ := os.ReadFile(filePath)
 
-    //nolint:errcheck
-    json.Unmarshal(content, &data)
-    jsonContent, err := jsonpath.Get(jsonPath, data)
-    if err != nil {
-        h.Printc(err.Error(), h.ERROR, false)
-        return result
+    content, readErr := os.ReadFile(filePath)
+    if readErr != nil {
+        h.Printc("Failed to read file!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to read file: %w", readErr)
     }
 
-    result = fmt.Sprintf("%v", jsonContent)
+    if err := json.Unmarshal(content, &data); err != nil {
+        h.Printc("Failed to unmarshal JSON!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to unmarshal JSON: %w", err)
+    }
 
-    return result
+    value, err := jsonpath.Get(jsonpathExtr, data)
+    if err != nil {
+        h.Printc("Failed to parse JSON!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse JSON: %w", err)
+    }
+
+    result = string(value.([]byte))
+
+    return result, nil
 }
 
 func getWebContent(url string) ([]byte, error) {
@@ -295,6 +307,35 @@ func getWebContent(url string) ([]byte, error) {
     })
 
     return result, fetchError
+}
+
+// parseJson parses JSON content and returns the matches of a given regex.
+func parseJson(content []byte, regexStr string, jsonpathExpr string) (string, error) {
+    result := ""
+    data := any (nil)
+
+    // Compile regex from string
+    regex, regexErr := regexp.Compile(regexStr)
+    if regexErr != nil {
+        h.Printc("Failed to parse regex!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
+    }
+
+    if err := json.Unmarshal(content, &data); err != nil {
+        h.Printc("Failed to unmarshal JSON!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to unmarshal JSON: %w", err)
+    }
+
+    value, err := jsonpath.Get(jsonpathExpr, data)
+    if err != nil {
+        h.Printc("Failed to parse JSON!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse JSON: %w", err)
+    }
+
+    matches := regex.FindString(string(value.([]byte)))
+    if regex.MatchString(string(value.([]byte))) { result = matches }
+
+    return result, nil
 }
 
 // parseHtml parses HTML content using XPath and returns the matches of a given regex.
@@ -350,7 +391,11 @@ func parseXml(content []byte, regexStr string, xpathStr string) (string, error) 
 
 // getSha256Hash returns the SHA256 hash of the given file.
 func getSha256Hash(filePath string) string {
-    file, _ := os.Open(filePath)
+    file, fileErr := os.Open(filePath)
+    if fileErr != nil {
+        h.Printc("Failed to open file!", h.ERROR, false)
+        return ""
+    }
     //nolint:errcheck
     defer file.Close()
 
@@ -364,16 +409,18 @@ func getSha256Hash(filePath string) string {
 }
 
 // downloadPkg downloads the requested RPM package.
-func downloadPkg(url string, filePath string) {
+func downloadPkg(url string, filePath string) error {
+    downloadError := error (nil)
     cacheFilePath := filepath.Join(CACHE_DIR, filePath)
 
     lo.TryCatch(func() error { // try
         request, _ := http.NewRequest("GET", url, nil)
         request.Header.Set("User-Agent", UserAgent)
-        resp, respErr := http.DefaultClient.Do(request)
-        if respErr != nil {
+        resp, err := http.DefaultClient.Do(request)
+        if err != nil {
             h.Printc("Request failed!", h.ERROR, false)
-            return respErr
+            downloadError = fmt.Errorf("Request failed: %w", err)
+            return downloadError
         }
         //nolint:errcheck
         defer resp.Body.Close()
@@ -383,14 +430,20 @@ func downloadPkg(url string, filePath string) {
         defer file.Close()
 
         bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        //nolint:errcheck
-        io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+        if _, err := io.Copy(io.MultiWriter(file, bar), resp.Body); err != nil {
+            h.Printc("Failed to download the requested RPM package!", h.ERROR, false)
+            downloadError = fmt.Errorf("Failed to download the requested RPM package: %w", err)
+            return downloadError
+        }
 
         return nil
     }, func() { // catch
         h.Printc("Failed to download the requested RPM package!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
     })
+
+    return downloadError
 }
 
 // installPkg installs the requested RPM package.
@@ -429,19 +482,18 @@ func upgradePkg(pkgs []string) {
 
 // getUpdates checks for updates to the packages list.
 func getUpdates() {
-    updateSuccess := false
+    success := false
     url := PKGS_REPO + "/raw/refs/heads/master/packages-list.json"
     tmpFilePath := filepath.Join(ConfigDir, "packages-list.json.tmp")
     filePath := filepath.Join(ConfigDir, "packages-list.json")
-    request, _ := http.NewRequest("", url, nil)
-    request.Header.Set("User-Agent", UserAgent)
-
     // Download packages-list.json
     lo.TryCatch(func() error { // try
+        request, _ := http.NewRequest("GET", url, nil)
+        request.Header.Set("User-Agent", UserAgent)
         resp, respErr := http.DefaultClient.Do(request)
         if respErr != nil {
             h.Printc("Request failed!", h.ERROR, false)
-            return respErr
+            return fmt.Errorf("Request failed: %w", respErr)
         }
         //nolint:errcheck
         defer resp.Body.Close()
@@ -470,37 +522,45 @@ func getUpdates() {
             h.Printc(err.Error(), h.ERROR, true)
         } else {
             h.Printc("Packages list was sucessfully updated!", h.INFO, true)
-            updateSuccess = true
+            success = true
         }
     } else { h.Printc("Packages list is already up to date!", h.INFO, true) }
 
-    if updateSuccess {
+    if success {
         data, _ := os.ReadFile(filePath)
 
         pkgs := []string {}
         if err := json.Unmarshal(data, &pkgs); err != nil {
-            h.Printc(err.Error(), h.ERROR, false)
+            h.Printc("Failed to unmarshal packages list!", h.ERROR, false)
             os.Exit(h.ERROR_EXIT_CODE)
         }
 
-        getPkgManifests(pkgs)
+        if err := getPkgManifests(pkgs); err != nil {
+            h.Printc("Failed to download package manifests!", h.ERROR, false)
+            os.Exit(h.ERROR_EXIT_CODE)
+        }
     }
 }
 
 // getPkgManifests retrieves the manifests for the given packages.
-func getPkgManifests(pkgs []string) {
+func getPkgManifests(pkgs []string) error {
+    downloadError := error (nil)
+
     h.Printc("Downloading package manifests...", h.INFO, false)
     for _, pkg := range pkgs {
+        if downloadError != nil { break }
+
         url := PKGS_REPO + fmt.Sprintf("/raw/refs/heads/master/manifests/%s.json", pkg)
         baseName := strings.Split(url, "/")[-0]
         filePath := filepath.Join(DataDir, baseName)
 
         lo.TryCatch(func() error { // try
             request, _ := http.NewRequest("GET", url, nil)
-            resp, err := http.DefaultClient.Do(request)
-            if err != nil {
-                h.Printc(err.Error(), h.ERROR, false)
-                return err
+            resp, respErr := http.DefaultClient.Do(request)
+            if respErr != nil {
+                h.Printc("Request failed!", h.ERROR, false)
+                downloadError = fmt.Errorf("Request failed: %w", respErr)
+                return downloadError
             }
             //nolint:errcheck
             defer resp.Body.Close()
@@ -510,15 +570,22 @@ func getPkgManifests(pkgs []string) {
             defer file.Close()
 
             bar := progressbar.DefaultBytes(resp.ContentLength, pkg)
-            //nolint:errcheck
-            io.Copy(io.MultiWriter(file, bar), resp.Body)
+
+            if _, err := io.Copy(io.MultiWriter(file, bar), resp.Body); err != nil {
+                msg := fmt.Sprintf("Failed to download package manifest for %s", pkg)
+                h.Printc(msg, h.ERROR, false)
+                downloadError = fmt.Errorf("%s: %w", msg, err)
+                return downloadError
+            }
 
             return nil
         }, func() { // catch
-            h.Printc("Unable to update packages list!", h.ERROR, false)
-            os.Exit(h.ERROR_EXIT_CODE)
+            h.Printc("Unknown error occurred!", h.ERROR, false)
+            downloadError = fmt.Errorf("Unknown error occurred")
         })
     }
+
+    return downloadError
 }
 
 // removePkg removes the requested RPM package.
@@ -602,7 +669,7 @@ func addRepo(repoUrl string) {
 }
 
 // addCoprRepo adds the given Fedora COPR repo to the YUM repos directory.
-func addCoprRepo(username string, project string) {
+func addCoprRepo(username string, project string) error {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
@@ -615,16 +682,19 @@ func addCoprRepo(username string, project string) {
 
     if err != nil {
         h.Printc(err.Error(), h.ERROR, false)
-    } else {
-        RepoName = fmt.Sprintf("_copr:copr.fedorainfracloud.org:%s:%s", username, project)
-        println(out)
-        msg := fmt.Sprintf("Successfully added the repo for %s", App)
-        h.Printc(msg, h.INFO, true)
+        return fmt.Errorf("Command failed: %w", err)
     }
+
+    RepoName = fmt.Sprintf("_copr:copr.fedorainfracloud.org:%s:%s", username, project)
+    println(out)
+    msg := fmt.Sprintf("Successfully added the repo for %s", App)
+    h.Printc(msg, h.INFO, true)
+
+    return nil
 }
 
 // removeRepo removes the repo of an application from the YUM repos directory.
-func removeRepo() bool {
+func removeRepo() (bool, error) {
     if !isAdmin() {
         h.Printc("rpm-get must be run as root!", h.ERROR, false)
         os.Exit(h.ERROR_EXIT_CODE)
@@ -635,10 +705,10 @@ func removeRepo() bool {
     if err := os.Remove(filePath); err != nil {
         msg := fmt.Sprintf("Failed to remove the repo for %s", App)
         h.Printc(msg, h.ERROR, false)
-        return false
+        return false, fmt.Errorf("%s: %w", msg, err)
     } else {
         msg := fmt.Sprintf("Successfully removed the repo for %s", App)
         h.Printc(msg, h.INFO, true)
-        return true
+        return true, nil
     }
 }
