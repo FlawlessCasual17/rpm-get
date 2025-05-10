@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"regexp"
-	"strconv"
+    "encoding/json"
+    "fmt"
+    "regexp"
 
-	"github.com/PaesslerAG/jsonpath"
+    "github.com/PaesslerAG/jsonpath"
 )
 
 var content = []byte(`
@@ -53,15 +52,15 @@ var content = []byte(`
 func main() {
     result, err := parseJson(content, "Desktop v([\\d.]+)", "$[0].name")
 
-	if err != nil {
-		// If an error occurred, print the error message and exit or handle it
-		print("Error: " + err.Error())
-		// os.Exit(1) // You might want to exit if the error is critical
-		return // Stop execution in main if there's an error
-	}
+    if err != nil {
+        // If an error occurred, print the error message and exit or handle it
+        print("Error: " + err.Error())
+        // os.Exit(1) // You might want to exit if the error is critical
+        return // Stop execution in main if there's an error
+    }
 
-	// If there was no error, print the successful result
-	println(result)
+    // If there was no error, print the successful result
+    println(result)
 }
 
 // parseJson parses JSON content and returns the matches of a given regex.
