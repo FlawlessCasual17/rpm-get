@@ -44,7 +44,7 @@ var (
     UserAgent = fmt.Sprintf(
         "Mozilla/5.0 (X11; Linux %s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         HOST_CPU)
-    GhHeaderAuth = fmt.Sprintf("Bearer %s", getEnv("GITHUB_TOKEN"))
+    GhHeaderAuth = fmt.Sprint("Bearer " + getEnv("GITHUB_TOKEN"))
     GlHeaderAuth = getEnv("GITLAB_TOKEN")
 )
 
@@ -310,7 +310,7 @@ func getWebContent(url string) ([]byte, error) {
 }
 
 // parseJson parses JSON content and returns the matches of a given regex.
-func parseJson(content []byte, regexStr string, jsonpathExpr string) (string, error) {
+func parseJson(content []byte, regexStr string, regexRepl string, jsonpathExpr string) (string, error) {
     result := ""
     data := any (nil)
 
@@ -332,21 +332,39 @@ func parseJson(content []byte, regexStr string, jsonpathExpr string) (string, er
         return result, fmt.Errorf("Failed to parse JSON: %w", err)
     }
 
-    matches := regex.FindString(string(value.([]byte)))
-    if regex.MatchString(string(value.([]byte))) { result = matches }
+    strValue, ok := value.(string)
+    if !ok {
+        println("JSONPath did not return a string value!")
+        return result, fmt.Errorf("JSONPath did not return a string value: %T, expected string", value)
+    }
+
+    if regexRepl != "" {
+        matches := regex.ReplaceAllString(strValue, regexRepl)
+        if regex.MatchString(strValue) { result = matches }
+    } else {
+        matches := regex.ReplaceAllString(strValue, "$1")
+        if regex.MatchString(strValue) { result = matches }
+    }
 
     return result, nil
 }
 
 // parseHtml parses HTML content using XPath and returns the matches of a given regex.
-func parseHtml(content []byte, regexStr string, xpathExpr string) (string, error) {
+func parseHtml(content []byte, regexStr string, regexRepl string, xpathExpr string) (string, error) {
     isHtml = true
-    v, err := parseXml(content, regexStr, xpathExpr)
-    return v, err
+    result, err := parseXml(content, regexStr, regexRepl, xpathExpr)
+
+    if err != nil {
+        msg := fmt.Sprint("An error occurred:\n" + err.Error())
+        h.Printc(msg, h.ERROR, false)
+        return "", fmt.Errorf("An error occurred:\n%w", err)
+    }
+
+    return result, nil
 }
 
 // parseXml parses XML (or HTML) content using XPath and returns the matches of a given regex.
-func parseXml(content []byte, regexStr string, xpathStr string) (string, error) {
+func parseXml(content []byte, regexStr string, regexRepl string, xpathStr string) (string, error) {
     result, innerText := "", ""
 
     // Compile regex from string
@@ -383,8 +401,13 @@ func parseXml(content []byte, regexStr string, xpathStr string) (string, error) 
         innerText = node.InnerText()
     }
 
-    matches := regex.FindString(innerText)
-    if regex.MatchString(innerText) { result = matches }
+    if regexRepl != "" {
+        matches := regex.ReplaceAllString(innerText, regexRepl)
+        if regex.MatchString(innerText) { result = matches }
+    } else {
+        matches := regex.ReplaceAllString(innerText, "$1")
+        if regex.MatchString(innerText) { result = matches }
+    }
 
     return result, nil
 }
@@ -572,7 +595,7 @@ func getPkgManifests(pkgs []string) error {
             bar := progressbar.DefaultBytes(resp.ContentLength, pkg)
 
             if _, err := io.Copy(io.MultiWriter(file, bar), resp.Body); err != nil {
-                msg := fmt.Sprintf("Failed to download package manifest for %s", pkg)
+                msg := fmt.Sprint("Failed to download package manifest for " + pkg)
                 h.Printc(msg, h.ERROR, false)
                 downloadError = fmt.Errorf("%s: %w", msg, err)
                 return downloadError
@@ -663,7 +686,7 @@ func addRepo(repoUrl string) {
         h.Printc(err.Error(), h.ERROR, false)
     } else {
         RepoName = baseName
-        msg := fmt.Sprintf("Successfully added the repo for %s", App)
+        msg := fmt.Sprint("Successfully added the repo for " + App)
         h.Printc(msg, h.INFO, true)
     }
 }
@@ -687,7 +710,7 @@ func addCoprRepo(username string, project string) error {
 
     RepoName = fmt.Sprintf("_copr:copr.fedorainfracloud.org:%s:%s", username, project)
     println(out)
-    msg := fmt.Sprintf("Successfully added the repo for %s", App)
+    msg := fmt.Sprint("Successfully added the repo for " + App)
     h.Printc(msg, h.INFO, true)
 
     return nil
@@ -703,11 +726,11 @@ func removeRepo() (bool, error) {
     filePath := filepath.Join(YUM_REPOS_DIR, RepoName)
 
     if err := os.Remove(filePath); err != nil {
-        msg := fmt.Sprintf("Failed to remove the repo for %s", App)
+        msg := fmt.Sprint("Failed to remove the repo for " + App)
         h.Printc(msg, h.ERROR, false)
         return false, fmt.Errorf("%s: %w", msg, err)
     } else {
-        msg := fmt.Sprintf("Successfully removed the repo for %s", App)
+        msg := fmt.Sprint("Successfully removed the repo for " + App)
         h.Printc(msg, h.INFO, true)
         return true, nil
     }
