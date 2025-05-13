@@ -81,6 +81,176 @@ var rootCmd = &cobra.Command {
     },
 }
 
+type LicenseObject struct {
+    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
+    identifier string   `yaml:"identifier"`
+    // License URL
+    url string          `yaml:"url"`
+}
+
+// Package license based on SPDX license format, and license list: https://spdx.org/licenses/
+type License struct {
+    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
+    licenseString string     `yaml:",omitempty"`
+    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
+    license *LicenseObject   `yaml:",omitempty"`
+}
+
+type PkgArch struct {
+    // Download URL for the architecture
+    url string    `yaml:"url"`
+    // Download hash for the architecture
+    hash string   `yaml:"hash"`
+}
+
+type UrlRepo struct {
+    // Package repository URL
+    url string         `yaml:"url"`
+    // Repository GPG key URL
+    gpgKeyUrl string   `yaml:"gpg_key_url"`
+}
+
+type CoprRepo struct {
+    // Copr user name
+    username string   `yaml:"username"`
+    // Copr project name
+    project string    `yaml:"project"`
+}
+
+// Information about an RPM/Copr repository
+type Repo struct {
+    urlRepo *UrlRepo     `yaml:",omitempty"`
+    coprRepo *CoprRepo   `yaml:",omitempty"`
+}
+
+// Custom script to extract hash information. Supports BASH, FISH, ZSH, PowerShell (pwsh), Nushell, and Python
+type Script struct {
+    scriptType string   `yaml:"script_type,omitempty"`
+    run string          `yaml:"run,omitempty"`
+}
+
+// Auto-update architecture-specific configuration
+type AutoUpdatePkgArch struct {
+    // Auto-update URL for the architecture
+    url string            `yaml:"url"`
+    // Configuration for checking package hash
+    check_hash struct {
+        // URL to check for hash information
+        url string        `yaml:"url"`
+        // Regular expression to extract hash information
+        regex string      `yaml:"regex"`
+        // JSONPath to extract hash information
+        jsonPath string   `yaml:"jsonpath,omitempty"`
+        // XPath to extract hash information
+        xpath string      `yaml:"xpath,omitempty"`
+        // Custom script to extract hash information.
+        script *Script    `yaml:"script,omitempty"`
+    }
+}
+
+// Auto-update architecture-specific configuration
+type AutoUpdateArch struct {
+    x86_64 *AutoUpdatePkgArch   `yaml:"x86_64,omitempty"`
+    x86 *AutoUpdatePkgArch      `yaml:"x86,omitempty"`
+    arm64 *AutoUpdatePkgArch    `yaml:"arm64,omitempty"`
+}
+
+// Information about a GitHub (Gitea, Gogs, Forgejo, and Codeberg) repository
+type GithubObject struct {
+    // Can either be a GitHub username or organization name
+    owner string      `yaml:"owner"`
+    // GitHub repository name
+    repo string       `yaml:"repo"`
+}
+
+// Can also be used with Gitea, Gogs, Forgejo, and Codeberg.
+type GitHub struct {
+    // Information about a GitHub (Gitea, Gogs, Forgejo, and Codeberg) repository. This must be in the format 'username/repository-name'
+    githubString string    `yaml:",omitempty"`
+    // Information about a GitHub (Gitea, Gogs, Forgejo, and Codeberg) repository
+    github *GithubObject   `yaml:",omitempty"`
+}
+
+type GitLabGroup struct {
+    // GitLab group name
+    group string      `yaml:"group"`
+    // GitLab sub-group name
+    subGroup string   `yaml:"sub_group"`
+    // GitLab project name
+    project string    `yaml:"project"`
+}
+
+type GitLabProfile struct {
+    // GitLab profile name
+    profile string   `yaml:"profile"`
+    // GitLab project name
+    project string   `yaml:"project"`
+}
+
+type GitLab struct {
+    // Information about a GitLab repository. This must be in the format 'group/sub-group/project'
+    groupString string       `yaml:",omitempty"`
+    // Information about a GitLab repository. This must be in the format 'profile/project'
+    profileString string     `yaml:",omitempty"`
+    // Information about a GitLab repository
+    group *GitLabGroup       `yaml:",omitempty"`
+    // Information about a GitLab repository
+    profile *GitLabProfile   `yaml:",omitempty"`
+}
+
+// Schema for package manifests
+type Pkg struct {
+    // List of operating systems (that use RPM) supported by this package
+    supported_os []string              `yaml:"supported_os"`
+    // Package version
+    version string                     `yaml:"version"`
+    // Package name
+    name string                        `yaml:"name"`
+    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
+    license License                    `yaml:"license"`
+    // Package homepage
+    homepage string                    `yaml:"homepage"`
+    // Package description
+    description string                 `yaml:"description"`
+    // Additional notes about the package
+    notes string                       `yaml:"notes,omitempty"`
+    // Architecture-specific download information
+    arch struct {
+        x86_64 *PkgArch                `yaml:"x86_64,omitempty"`
+        x86 *PkgArch                   `yaml:"x86,omitempty"`
+        arm64 *PkgArch                 `yaml:"arm64,omitempty"`
+    }                                  `yaml:"arch"`
+    // Information about an RPM/Copr repository
+    repo *Repo                         `yaml:"repo,omitempty"`
+    // List of package dependencies
+    depends []string                   `yaml:"depends,omitempty"`
+    // List of recommended packages
+    recommends []string                `yaml:"recommends,omitempty"`
+    // List of suggested packages
+    suggests []string                  `yaml:"suggests,omitempty"`
+    // List of conflicting packages
+    conflicts []string                 `yaml:"conflicts,omitempty"`
+    // List of packages that this package replaces
+    replaces []string                  `yaml:"replaces,omitempty"`
+    // Auto-update configuration
+    auto_update struct {
+        // Configuration for checking package version.
+        check_version struct {
+            url string                 `yaml:"url"`
+            jsonpath string            `yaml:"jsonpath,omitempty"`
+            xpath string               `yaml:"xpath,omitempty"`
+            script Script              `yaml:"script,omitempty"`
+            regex string               `yaml:"regex,omitempty"`
+            regex_replace string       `yaml:"regex_replace,omitempty"`
+            use_latest bool            `yaml:"use_latest,omitempty"`
+            github *GitHub             `yaml:"github,omitempty"`
+            gitlab *GitLab             `yaml:"gitlab,omitempty"`
+        }                              `yaml:"check_version"`
+        // Architecture-specific auto-update information
+        arch *AutoUpdateArch           `yaml:"arch"`
+    }                                  `yaml:"auto_update"`
+}
+
 func Execute() {
     if err := rootCmd.Execute(); err != nil {
         h.Printc(err.Error(), h.ERROR, false)
@@ -193,6 +363,10 @@ func getReleases() {
 
     if _, err := os.Stat(CACHE_DIR); err != nil && os.IsNotExist(err) {
         createCacheDir()
+    }
+
+    if _, err := os.Stat(ETC_DIR); err != nil && os.IsNotExist(err) {
+        createEtcDir()
     }
 
     lo.TryCatch(func() error { // try
@@ -734,4 +908,11 @@ func removeRepo() (bool, error) {
         h.Printc(msg, h.INFO, true)
         return true, nil
     }
+}
+
+// PkgInfo returns the package information for the given package.
+func pkgInfo(pkg string) string {
+    result := ""
+
+    return result
 }
