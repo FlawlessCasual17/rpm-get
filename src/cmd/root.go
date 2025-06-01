@@ -99,8 +99,6 @@ type License struct {
 type PkgArch struct {
     // Download URL for the architecture
     url string    `yaml:"url"`
-    // Download hash for the architecture
-    hash string   `yaml:"hash"`
 }
 
 type UrlRepo struct {
@@ -123,7 +121,7 @@ type Repo struct {
     coprRepo *CoprRepo   `yaml:",omitempty"`
 }
 
-// Custom script to extract hash information. Supports BASH, FISH, ZSH, PowerShell (pwsh), Nushell, and Python
+// Custom script to extract version information. Supports BASH, FISH, ZSH, PowerShell (pwsh), Nushell, and Python
 type Script struct {
     scriptType string   `yaml:"script_type,omitempty"`
     run string          `yaml:"run,omitempty"`
@@ -133,19 +131,6 @@ type Script struct {
 type AutoUpdatePkgArch struct {
     // Auto-update URL for the architecture
     url string            `yaml:"url"`
-    // Configuration for checking package hash
-    check_hash struct {
-        // URL to check for hash information
-        url string        `yaml:"url"`
-        // Regular expression to extract hash information
-        regex string      `yaml:"regex"`
-        // JSONPath to extract hash information
-        jsonPath string   `yaml:"jsonpath,omitempty"`
-        // XPath to extract hash information
-        xpath string      `yaml:"xpath,omitempty"`
-        // Custom script to extract hash information.
-        script *Script    `yaml:"script,omitempty"`
-    }
 }
 
 // Auto-update architecture-specific configuration
