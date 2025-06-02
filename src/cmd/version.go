@@ -1,14 +1,11 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"fmt"
-	"os"
+    "fmt"
+    "os"
 
-	h "github.com/FlawlessCasual17/rpm-get/helpers"
-	"github.com/spf13/cobra"
+    h "github.com/FlawlessCasual17/rpm-get/helpers"
+    "github.com/spf13/cobra"
 )
 
 // versionCmd represents the version command
