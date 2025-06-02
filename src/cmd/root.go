@@ -1,29 +1,30 @@
 package cmd
 
 import (
-    "crypto/sha256"
-    "encoding/hex"
-    "flag"
-    "fmt"
-    "io"
-    "net/http"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "regexp"
-    "runtime"
-    "strings"
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
 
-    // third-party imports
-    "github.com/goccy/go-json"
-    h "github.com/FlawlessCasual17/rpm-get/helpers"
-    "github.com/PaesslerAG/jsonpath"
-    "github.com/antchfx/htmlquery"
-    "github.com/antchfx/xmlquery"
-    "github.com/antchfx/xpath"
-    "github.com/samber/lo"
-    "github.com/schollz/progressbar/v3"
-    "github.com/spf13/cobra"
+	// third-party imports
+	h "github.com/FlawlessCasual17/rpm-get/helpers"
+	"github.com/antchfx/htmlquery"
+	"github.com/antchfx/xmlquery"
+	"github.com/antchfx/xpath"
+	"github.com/goccy/go-json"
+	"github.com/goccy/go-yaml"
+	"github.com/samber/lo"
+	"github.com/schollz/progressbar/v3"
+	"github.com/spf13/cobra"
 )
 
 // VERSION is the current version of rpm-get.
@@ -401,30 +402,20 @@ func rateLimited(feedbackMsg string) bool {
 }
 
 // parseJsonFile parses a JSON file using a given JSONPath and returns the result.
-func parseJsonFile(filePath string, jsonpathExtr string) (string, error) {
-    result := ""
-    data := any (nil)
-
+func parseJsonFile(filePath string, jsonpathExpr string) (string, error) {
     content, readErr := os.ReadFile(filePath)
     if readErr != nil {
         h.Printc("Failed to read file!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to read file: %w", readErr)
+        return "", fmt.Errorf("Failed to read file: %w", readErr)
     }
 
-    if err := json.Unmarshal(content, &data); err != nil {
-        h.Printc("Failed to unmarshal JSON!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to unmarshal JSON: %w", err)
-    }
-
-    value, err := jsonpath.Get(jsonpathExtr, data)
+    value, err := parseJson(content, ".", "", jsonpathExpr)
     if err != nil {
-        h.Printc("Failed to parse JSON!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse JSON: %w", err)
+        h.Printc("Failed to parse JSON!", h.ERROR, true)
+        return "", fmt.Errorf("Failed to parse JSON: %w", err)
     }
 
-    result = string(value.([]byte))
-
-    return result, nil
+    return value, nil
 }
 
 func getWebContent(url string) ([]byte, error) {
@@ -480,21 +471,63 @@ func parseJson(content []byte, regexStr string, regexRepl string, jsonpathExpr s
         return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
     }
 
-    if err := json.Unmarshal(content, &data); err != nil {
-        h.Printc("Failed to unmarshal JSON!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to unmarshal JSON: %w", err)
+    // Compile JSONPath from string
+    jpath, jpathErr := json.CreatePath(jsonpathExpr)
+    if jpathErr != nil {
+        h.Printc("Failed to parse JSONPath!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse JSONPath: %w", jpathErr)
     }
 
-    value, err := jsonpath.Get(jsonpathExpr, data)
-    if err != nil {
-        h.Printc("Failed to parse JSON!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse JSON: %w", err)
+    if err := jpath.Unmarshal(content, &data); err != nil {
+        h.Printc("Failed to parse JSON with JSONPath!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse JSON with JSONPath: %w", err)
     }
 
-    strValue, ok := value.(string)
+    strValue, ok := data.(string)
     if !ok {
         println("JSONPath did not return a string value!")
-        return result, fmt.Errorf("JSONPath did not return a string value: %T, expected string", value)
+        return result, fmt.Errorf("JSONPath did not return a string value: %T, expected string", data)
+    }
+
+    if regexRepl != "" {
+        matches := regex.ReplaceAllString(strValue, regexRepl)
+        if regex.MatchString(strValue) { result = matches }
+    } else {
+        matches := regex.ReplaceAllString(strValue, "$1")
+        if regex.MatchString(strValue) { result = matches }
+    }
+
+    return result, nil
+}
+
+func parseYaml(content []byte, regexStr string, regexRepl string, yamlpathExpr string) (string, error) {
+    result := ""
+    data := any (nil)
+
+    // Compile regex from string
+    regex, regexErr := regexp.Compile(regexStr)
+    if regexErr != nil {
+        h.Printc("Failed to parse regex!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
+    }
+
+    // Compile yamlpath from string
+    yamlpath, yamlpathErr := yaml.PathString(yamlpathExpr)
+    if yamlpathErr != nil {
+        h.Printc("Failed to parse YAMLPath!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse YAMLPath: %w", yamlpathErr)
+    }
+
+    contentReader := bytes.NewReader(content)
+    if err := yamlpath.Read(contentReader, &data); err != nil {
+        h.Printc("Failed to parse YAML with YAMLPath!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to parse YAML with YAMLPath: %w", err)
+    }
+
+    strValue, ok := data.(string)
+    if !ok {
+        println("YAMLPath did not return a string value!")
+        return result, fmt.Errorf("YAMLPath did not return a string value: %T, expected string", data)
     }
 
     if regexRepl != "" {
@@ -895,9 +928,21 @@ func removeRepo() (bool, error) {
     }
 }
 
-// PkgInfo returns the package information for the given package.
-func pkgInfo(pkg string) string {
-    result := ""
+// NOTE: Not implemented yet
 
-    return result
-}
+// // PkgInfo returns the package information for the given package.
+// func pkgInfo(pkg string) (string, error) {
+//     result := ""
+//     data := any (nil)
+//     filePath := filepath.Join(DataDir, pkg + ".yaml")
+//
+//     content, readErr := os.ReadFile(filePath)
+//     if readErr != nil {
+//         h.Printc("Failed to read file!", h.ERROR, false)
+//         return result, fmt.Errorf("Failed to read file: %w", readErr)
+//     }
+//
+//     if err := yaml.Unmarshal(content, &data); err != nil {}
+//
+//     return result, nil
+// }
