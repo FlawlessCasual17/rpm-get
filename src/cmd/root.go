@@ -201,6 +201,7 @@ type Pkg struct {
     // Additional notes about the package
     notes string                       `yaml:"notes,omitempty"`
     // Architecture-specific download information
+    pkg_arches []string                `yaml:"pkg_arches"`
     arch struct {
         x86_64 *PkgArch                `yaml:"x86_64,omitempty"`
         x86 *PkgArch                   `yaml:"x86,omitempty"`
@@ -930,19 +931,19 @@ func removeRepo() (bool, error) {
 
 // NOTE: Not implemented yet
 
-// // PkgInfo returns the package information for the given package.
-// func pkgInfo(pkg string) (string, error) {
-//     result := ""
-//     data := any (nil)
-//     filePath := filepath.Join(DataDir, pkg + ".yaml")
-//
-//     content, readErr := os.ReadFile(filePath)
-//     if readErr != nil {
-//         h.Printc("Failed to read file!", h.ERROR, false)
-//         return result, fmt.Errorf("Failed to read file: %w", readErr)
-//     }
-//
-//     if err := yaml.Unmarshal(content, &data); err != nil {}
-//
-//     return result, nil
-// }
+// PkgInfo returns the package information for the given package.
+func pkgInfo(pkg string) (string, error) {
+    result := ""
+    data := Pkg {}
+    filePath := filepath.Join(DataDir, pkg + ".yaml")
+
+    content, readErr := os.ReadFile(filePath)
+    if readErr != nil {
+        h.Printc("Failed to read file!", h.ERROR, false)
+        return result, fmt.Errorf("Failed to read file: %w", readErr)
+    }
+
+    if err := yaml.Unmarshal(content, &data); err != nil {}
+
+    return result, nil
+}
