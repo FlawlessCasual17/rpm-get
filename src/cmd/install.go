@@ -27,8 +27,8 @@ func installPkg(pkg string) {
         os.Exit(h.ERROR_EXIT_CODE)
     }
 
-    cmd := which("sudo") + " " + which("dnf")
-    args := []string { "install", "-y", pkg }
+    cmd := which("sudo") + " " + which("rpm")
+    args := []string { "-vi", pkg }
     command := exec.Command(cmd, args...)
     out, err := command.Output()
 

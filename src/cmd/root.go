@@ -1,26 +1,22 @@
 package cmd
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
+    "crypto/sha256"
+    "encoding/hex"
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "runtime"
+    "strings"
 
-	// third-party imports
-	h "github.com/FlawlessCasual17/rpm-get/helpers"
-	"github.com/goccy/go-json"
-	"github.com/goccy/go-yaml"
-	"github.com/samber/lo"
-	"github.com/schollz/progressbar/v3"
-	"github.com/spf13/cobra"
+    // third-party imports
+    h "github.com/FlawlessCasual17/rpm-get/helpers"
+    "github.com/samber/lo"
+    "github.com/schollz/progressbar/v3"
+    "github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command {
@@ -37,9 +33,6 @@ These can be either 3rd party repositories or direct download packages from the 
         _ = cmd.Help(); os.Exit(h.USAGE_EXIT_CODE)
     },
 }
-
-// VERSION is the current version of rpm-get.
-const VERSION string = "0.0.1"
 
 var (
     wantsVersion bool
@@ -61,183 +54,32 @@ var (
     GlHeaderAuth = getEnv("GITLAB_TOKEN")
 )
 
-// ETC_DIR is the directory where rpm-get will store repositories.
-const ETC_DIR string = "/etc/rpm-get"
+const (
+    // VERSION is the current version of rpm-get.
+    VERSION string = "0.0.1"
 
-// TODO: Add support for Zypper repos
+    // ETC_DIR is the directory where rpm-get will store repositories.
+    ETC_DIR string = "/etc/rpm-get"
 
-// YUM_REPOS_DIR is the directory where rpm-get will store RPM repositories.
-const YUM_REPOS_DIR string = "/etc/yum.repos.d"
+    // TODO: Add support for Zypper repos
 
-// CACHE_DIR is the directory where rpm-get will
-// cache JSON files from GitHub/GitLab.
-// As well as downloaded packages.
-const CACHE_DIR string = "/var/cache/rpm-get"
+    // YUM_REPOS_DIR is the directory where rpm-get will store RPM repositories.
+    YUM_REPOS_DIR string = "/etc/yum.repos.d"
 
-// HOST_CPU is the host CPU architecture.
-const HOST_CPU string = runtime.GOARCH
+    // CACHE_DIR is the directory where rpm-get will
+    // cache JSON files from GitHub/GitLab.
+    // As well as downloaded packages.
+    CACHE_DIR string = "/var/cache/rpm-get"
 
-// MAIN_REPO is the main repository for rpm-get.
-const MAIN_REPO string = "https://github.com/FlawlessCasual17/rpm-get"
+    // HOST_CPU is the host CPU architecture.
+    HOST_CPU string = runtime.GOARCH
 
-// PKGS_REPO is the repository for package manifests.
-const PKGS_REPO string = "https://github.com/FlawlessCasual17/rpm-get.Packages"
+    // MAIN_REPO is the main repository for rpm-get.
+    MAIN_REPO string = "https://github.com/FlawlessCasual17/rpm-get"
 
-type LicenseObject struct {
-    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
-    identifier string   `yaml:"identifier"`
-    // License URL
-    url string          `yaml:"url"`
-}
-
-// Package license based on SPDX license format, and license list: https://spdx.org/licenses/
-type License struct {
-    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
-    licenseString string     `yaml:",omitempty"`
-    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
-    license *LicenseObject   `yaml:",omitempty"`
-}
-
-type PkgArch struct {
-    // Download URL for the architecture
-    url string    `yaml:"url"`
-}
-
-type UrlRepo struct {
-    // Package repository URL
-    url string         `yaml:"url"`
-    // Repository GPG key URL
-    gpgKeyUrl string   `yaml:"gpg_key_url"`
-}
-
-type CoprRepo struct {
-    // Copr user name
-    username string   `yaml:"username"`
-    // Copr project name
-    project string    `yaml:"project"`
-}
-
-// Information about an RPM/Copr repository
-type Repo struct {
-    urlRepo *UrlRepo     `yaml:",omitempty"`
-    coprRepo *CoprRepo   `yaml:",omitempty"`
-}
-
-// Custom script to extract version information. Supports BASH, FISH, ZSH, PowerShell (pwsh), Nushell, and Python
-type Script struct {
-    scriptType string   `yaml:"script_type,omitempty"`
-    run string          `yaml:"run,omitempty"`
-}
-
-// Auto-update architecture-specific configuration
-type AutoUpdatePkgArch struct {
-    // Auto-update URL for the architecture
-    url string            `yaml:"url"`
-}
-
-// Auto-update architecture-specific configuration
-type AutoUpdateArch struct {
-    x86_64 *AutoUpdatePkgArch   `yaml:"x86_64,omitempty"`
-    x86 *AutoUpdatePkgArch      `yaml:"x86,omitempty"`
-    arm64 *AutoUpdatePkgArch    `yaml:"arm64,omitempty"`
-}
-
-// Information about a GitHub (Gitea, Gogs, Forgejo, and Codeberg) repository
-type GithubObject struct {
-    // Can either be a GitHub username or organization name
-    owner string      `yaml:"owner"`
-    // GitHub repository name
-    repo string       `yaml:"repo"`
-}
-
-// Can also be used with Gitea, Gogs, Forgejo, and Codeberg.
-type GitHub struct {
-    // Information about a GitHub (Gitea, Gogs, Forgejo, and Codeberg) repository. This must be in the format 'username/repository-name'
-    githubString string    `yaml:",omitempty"`
-    // Information about a GitHub (Gitea, Gogs, Forgejo, and Codeberg) repository
-    github *GithubObject   `yaml:",omitempty"`
-}
-
-type GitLabGroup struct {
-    // GitLab group name
-    group string      `yaml:"group"`
-    // GitLab sub-group name
-    subGroup string   `yaml:"sub_group"`
-    // GitLab project name
-    project string    `yaml:"project"`
-}
-
-type GitLabProfile struct {
-    // GitLab profile name
-    profile string   `yaml:"profile"`
-    // GitLab project name
-    project string   `yaml:"project"`
-}
-
-type GitLab struct {
-    // Information about a GitLab repository. This must be in the format 'group/sub-group/project'
-    groupString string       `yaml:",omitempty"`
-    // Information about a GitLab repository. This must be in the format 'profile/project'
-    profileString string     `yaml:",omitempty"`
-    // Information about a GitLab repository
-    group *GitLabGroup       `yaml:",omitempty"`
-    // Information about a GitLab repository
-    profile *GitLabProfile   `yaml:",omitempty"`
-}
-
-// Schema for package manifests
-type Pkg struct {
-    // List of operating systems (that use RPM) supported by this package
-    supported_os []string              `yaml:"supported_os"`
-    // Package version
-    version string                     `yaml:"version"`
-    // Package name
-    name string                        `yaml:"name"`
-    // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
-    license *License                    `yaml:"license"`
-    // Package homepage
-    homepage string                    `yaml:"homepage"`
-    // Package description
-    description string                 `yaml:"description"`
-    // Additional notes about the package
-    notes string                       `yaml:"notes,omitempty"`
-    // Architecture-specific download information
-    pkg_arches []string                `yaml:"pkg_arches"`
-    arch struct {
-        x86_64 *PkgArch                `yaml:"x86_64,omitempty"`
-        x86 *PkgArch                   `yaml:"x86,omitempty"`
-        arm64 *PkgArch                 `yaml:"arm64,omitempty"`
-    }                                  `yaml:"arch"`
-    // Information about an RPM/Copr repository
-    repo *Repo                         `yaml:"repo,omitempty"`
-    // List of package dependencies
-    depends []string                   `yaml:"depends,omitempty"`
-    // List of recommended packages
-    recommends []string                `yaml:"recommends,omitempty"`
-    // List of suggested packages
-    suggests []string                  `yaml:"suggests,omitempty"`
-    // List of conflicting packages
-    conflicts []string                 `yaml:"conflicts,omitempty"`
-    // List of packages that this package replaces
-    replaces []string                  `yaml:"replaces,omitempty"`
-    // Auto-update configuration
-    auto_update struct {
-        // Configuration for checking package version.
-        check_version struct {
-            url string                 `yaml:"url"`
-            jsonpath string            `yaml:"jsonpath,omitempty"`
-            xpath string               `yaml:"xpath,omitempty"`
-            script Script              `yaml:"script,omitempty"`
-            regex string               `yaml:"regex,omitempty"`
-            regex_replace string       `yaml:"regex_replace,omitempty"`
-            use_latest bool            `yaml:"use_latest,omitempty"`
-            github *GitHub             `yaml:"github,omitempty"`
-            gitlab *GitLab             `yaml:"gitlab,omitempty"`
-        }                              `yaml:"check_version"`
-        // Architecture-specific auto-update information
-        arch *AutoUpdateArch           `yaml:"arch"`
-    }                                  `yaml:"auto_update"`
-}
+    // PKGS_REPO is the repository for package manifests.
+    PKGS_REPO string = "https://github.com/FlawlessCasual17/rpm-get.Packages"
+)
 
 func Execute() {
     if err := rootCmd.Execute(); err != nil {
@@ -297,111 +139,6 @@ func which(cmd string) string {
     result, err := exec.LookPath(cmd)
     if err != nil { return "" }
     return result
-}
-
-// rateLimited checks if the given feedback message contains a rate limit error.
-func rateLimited(feedbackMsg string) bool {
-    targets := []string { "API rate limit exceeded", "API rate limit exceeded for" }
-    return strings.Contains(feedbackMsg, targets[0]) || strings.Contains(feedbackMsg, targets[1])
-}
-
-// parseJsonFile parses a JSON file using a given JSONPath and returns the result.
-func parseJsonFile(filePath string, jsonpathExpr string) (string, error) {
-    content, readErr := os.ReadFile(filePath)
-    if readErr != nil {
-        h.Printc("Failed to read file!", h.ERROR, false)
-        return "", fmt.Errorf("Failed to read file: %w", readErr)
-    }
-
-    value, err := parseJson(content, ".", "", jsonpathExpr)
-    if err != nil {
-        h.Printc("Failed to parse JSON!", h.ERROR, true)
-        return "", fmt.Errorf("Failed to parse JSON: %w", err)
-    }
-
-    return value, nil
-}
-
-// parseJson parses JSON content and returns the matches of a given regex.
-func parseJson(content []byte, regexStr string, regexRepl string, jsonpathExpr string) (string, error) {
-    result := ""
-    data := any (nil)
-
-    // Compile regex from string
-    regex, regexErr := regexp.Compile(regexStr)
-    if regexErr != nil {
-        h.Printc("Failed to parse regex!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
-    }
-
-    // Compile JSONPath from string
-    jpath, jpathErr := json.CreatePath(jsonpathExpr)
-    if jpathErr != nil {
-        h.Printc("Failed to parse JSONPath!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse JSONPath: %w", jpathErr)
-    }
-
-    if err := jpath.Unmarshal(content, &data); err != nil {
-        h.Printc("Failed to parse JSON with JSONPath!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse JSON with JSONPath: %w", err)
-    }
-
-    strValue, ok := data.(string)
-    if !ok {
-        println("JSONPath did not return a string value!")
-        return result, fmt.Errorf("JSONPath did not return a string value: %T, expected string", data)
-    }
-
-    if regexRepl != "" {
-        matches := regex.ReplaceAllString(strValue, regexRepl)
-        if regex.MatchString(strValue) { result = matches }
-    } else {
-        matches := regex.ReplaceAllString(strValue, "$1")
-        if regex.MatchString(strValue) { result = matches }
-    }
-
-    return result, nil
-}
-
-func parseYaml(content []byte, regexStr string, regexRepl string, yamlpathExpr string) (string, error) {
-    result := ""
-    data := any (nil)
-
-    // Compile regex from string
-    regex, regexErr := regexp.Compile(regexStr)
-    if regexErr != nil {
-        h.Printc("Failed to parse regex!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
-    }
-
-    // Compile yamlpath from string
-    yamlpath, yamlpathErr := yaml.PathString(yamlpathExpr)
-    if yamlpathErr != nil {
-        h.Printc("Failed to parse YAMLPath!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse YAMLPath: %w", yamlpathErr)
-    }
-
-    contentReader := bytes.NewReader(content)
-    if err := yamlpath.Read(contentReader, &data); err != nil {
-        h.Printc("Failed to parse YAML with YAMLPath!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse YAML with YAMLPath: %w", err)
-    }
-
-    strValue, ok := data.(string)
-    if !ok {
-        println("YAMLPath did not return a string value!")
-        return result, fmt.Errorf("YAMLPath did not return a string value: %T, expected string", data)
-    }
-
-    if regexRepl != "" {
-        matches := regex.ReplaceAllString(strValue, regexRepl)
-        if regex.MatchString(strValue) { result = matches }
-    } else {
-        matches := regex.ReplaceAllString(strValue, "$1")
-        if regex.MatchString(strValue) { result = matches }
-    }
-
-    return result, nil
 }
 
 // getSha256Hash returns the SHA256 hash of the given file.
@@ -470,7 +207,7 @@ func addRepo(repoUrl string) {
 
     baseName := strings.Split(repoUrl, "/")[-0]
     tmpFilePath := filepath.Join(YUM_REPOS_DIR, baseName + ".tmp")
-    filePath := filepath.Join(YUM_REPOS_DIR, baseName)
+    filePath := strings.ReplaceAll(tmpFilePath, ".tmp", "")
 
     // Download packages-list.json
     lo.TryCatch(func() error { // try
@@ -515,7 +252,8 @@ func addCoprRepo(username string, project string) error {
     }
 
     cmd := which("sudo") + " " + which("dnf")
-    args := []string { "copr", "enable", "-y", username + "/" + project }
+    coprRepo := username + "/" + project
+    args := []string { "copr", "enable", "-y", coprRepo }
     command := exec.Command(cmd, args...)
     out, err := command.Output()
 
