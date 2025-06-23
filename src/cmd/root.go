@@ -197,7 +197,7 @@ type Pkg struct {
     // Package name
     name string                        `yaml:"name"`
     // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
-    license License                    `yaml:"license"`
+    license *License                    `yaml:"license"`
     // Package homepage
     homepage string                    `yaml:"homepage"`
     // Package description
