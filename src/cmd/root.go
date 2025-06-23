@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,16 +26,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var rootCmd = &cobra.Command {
+    Use: "rpm-get",
+    Short: "rpm-get is a CLI tool for downloading and managing RPM packages.",
+    Long: `rpm-get is a CLI tool for aquiring RPM packages that are not convieniently
+available in the default repositories.
+These can be either 3rd party repositories or direct download packages from the internet.`,
+    Run: func(cmd *cobra.Command, _ []string) {
+        if wantsVersion {
+            getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
+        }
+
+        _ = cmd.Help(); os.Exit(h.USAGE_EXIT_CODE)
+    },
+}
+
 // VERSION is the current version of rpm-get.
 const VERSION string = "0.0.1"
 
 var (
-    isHtml = false
+    wantsVersion bool
+    isHTML = false
     App = ""
     Project = ""
     RelType = ""
     Creator = ""
-    ProjectId = ""
+    ProjectID = ""
     RepoName = ""
     ConfigDir = filepath.Join(os.Getenv("HOME"), ".config/rpm-get")
     ConfigFile = filepath.Join(ConfigDir, "config.json")
@@ -70,17 +85,6 @@ const MAIN_REPO string = "https://github.com/FlawlessCasual17/rpm-get"
 
 // PKGS_REPO is the repository for package manifests.
 const PKGS_REPO string = "https://github.com/FlawlessCasual17/rpm-get.Packages"
-
-var rootCmd = &cobra.Command {
-    Use: "rpm-get",
-    Short: "rpm-get is a CLI tool for downloading and managing RPM packages.",
-    Long: `rpm-get is a CLI tool for aquiring RPM packages that are not convieniently
-    available in the default repositories. These can be either 3rd party repositories
-    or direct download packages from the internet.`,
-    Run: func(_ *cobra.Command, _ []string) {
-        Usage(); os.Exit(h.USAGE_EXIT_CODE)
-    },
-}
 
 type LicenseObject struct {
     // Package license based on SPDX license format, and license list: https://spdx.org/licenses/
@@ -246,44 +250,31 @@ func Execute() {
 }
 
 func init() {
-    for _, arg := range os.Args[1:] {
-        switch arg {
-        case "-version":
-            h.Printc("`-version` is not a valid flag. Use `-v` or `--version` instead", h.WARNING, false)
-            os.Exit(h.USAGE_EXIT_CODE)
-        case "-help":
-            h.Printc("`-help` is not a valid flag. Use `-h` or `--help` instead", h.WARNING, false)
-            os.Exit(h.USAGE_EXIT_CODE)
-        }
-    }
+    // // Set custom usage function before defining flags
+    // rootCmd.Flags().Usage = func () { _ = rootCmd.Usage() }
+    // rootCmd.Flags().BoolVar(&help, "help", "h", "", "Display help information")
+    // rootCmd.Flags().Bool("?", false, "Display help information")
 
-    // Set custom usage function before defining flags
-    flag.Usage = Usage
+    // vFlag := rootCmd.Flags().Bool("v", false, "Display verbose information")
+    rootCmd.Flags().BoolVar(&wantsVersion, "version", false, "Display version information")
 
-    hFlag := flag.Bool("h", false, "Display help information")
-    helpFlag := flag.Bool("help", false, "Display help information")
-    questionflag := flag.Bool("?", false, "Display help information")
+    // // Parse flags
+    // rootCmd.Flags().Parse()
 
-    vFlag := flag.Bool("v", false, "Display version information")
-    versionFlag := flag.Bool("version", false, "Display version information")
+    // // Check for `--help` in remaining args
+    // for _, arg := range rootCmd.Flags().Args() {
+    //     switch arg {
+    //     case "--help":
+    //         _ = rootCmd.Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
+    //     }
+    // }
 
-    // Parse flags
-    flag.Parse()
-
-    // Check for `--help` in remaining args
-    for _, arg := range flag.Args() {
-        switch arg {
-        case "--help":
-            Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
-        }
-    }
-
-    // Check if -h was used
-    if *hFlag || *helpFlag || *questionflag {
-        Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
-    } else if *vFlag || *versionFlag {
-        getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
-    }
+    // // Check if -h was used
+    // if *hFlag || *helpFlag || *questionflag {
+    //     _ = rootCmd.Usage(); os.Exit(h.SUCCESS_EXIT_CODE)
+    // } else if *versionFlag {
+    //     getVersion(); os.Exit(h.SUCCESS_EXIT_CODE)
+    // }
 }
 
 // spellcheck: ignore
@@ -326,7 +317,7 @@ func getReleases() {
         feedbackMsg = v
     case "gitlab":
         baseUrl := "https://gitlab.com/api/v4/projects"
-        url = baseUrl + fmt.Sprintf("/%s/releases/permalink/latest", ProjectId)
+        url = baseUrl + fmt.Sprintf("/%s/releases/permalink/latest", ProjectID)
         key = "PRIVATE-TOKEN"; value = GlHeaderAuth
         v, _ := os.ReadFile(cacheFilePath);
         feedbackMsg = string(v)
@@ -528,7 +519,7 @@ func parseYaml(content []byte, regexStr string, regexRepl string, yamlpathExpr s
 
 // parseHtml parses HTML content using XPath and returns the matches of a given regex.
 func parseHtml(content []byte, regexStr string, regexRepl string, xpathExpr string) (string, error) {
-    isHtml = true
+    isHTML = true
     result, err := parseXml(content, regexStr, regexRepl, xpathExpr)
 
     if err != nil {
@@ -558,7 +549,7 @@ func parseXml(content []byte, regexStr string, regexRepl string, xpathStr string
         return result, fmt.Errorf("Failed to parse xpath: %w", xpathErr)
     }
 
-    if isHtml {
+    if isHTML {
         doc, err := htmlquery.Parse(strings.NewReader(string(content)))
         if err != nil {
             h.Printc("Failed to parse HTML!", h.ERROR, false)

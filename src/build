@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+# shellcheck disable=SC2164
+(
+  cd "$SCRIPT_DIR"
+  env GOOS='linux' GOARCH='amd64' go build -a -v -o "$SCRIPT_DIR/../bin/rpm-get"
+)
