@@ -14,7 +14,7 @@ var installCmd = &cobra.Command{
     Short: "Install packages",
     Long: "Install packages",
     Run: func(_ *cobra.Command, _ []string) {
-        getReleases()
+        /* getReleases() */
     },
 }
 

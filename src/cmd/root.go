@@ -16,9 +16,6 @@ import (
 
 	// third-party imports
 	h "github.com/FlawlessCasual17/rpm-get/helpers"
-	"github.com/antchfx/htmlquery"
-	"github.com/antchfx/xmlquery"
-	"github.com/antchfx/xpath"
 	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	"github.com/samber/lo"
@@ -302,75 +299,6 @@ func which(cmd string) string {
     return result
 }
 
-// getReleases retrieves the list of releases from the GitHub/GitLab API.
-func getReleases() {
-    filePath := App + "_cache.json"
-    cacheFilePath := filepath.Join(CACHE_DIR, filePath)
-    url, feedbackMsg, key, value := "", "", "", ""
-
-    switch RelType {
-    case "github":
-        baseUrl := "https://api.github.com/repos"
-        url = baseUrl + fmt.Sprintf("/%s/%s/releases/latest", Creator, Project)
-        key = "Authorization"; value = GhHeaderAuth
-        v, _ := parseJsonFile(cacheFilePath, "$.message")
-        feedbackMsg = v
-    case "gitlab":
-        baseUrl := "https://gitlab.com/api/v4/projects"
-        url = baseUrl + fmt.Sprintf("/%s/releases/permalink/latest", ProjectID)
-        key = "PRIVATE-TOKEN"; value = GlHeaderAuth
-        v, _ := os.ReadFile(cacheFilePath);
-        feedbackMsg = string(v)
-    }
-
-    if _, err := os.Stat(CACHE_DIR); err != nil && os.IsNotExist(err) {
-        createCacheDir()
-    }
-
-    if _, err := os.Stat(ETC_DIR); err != nil && os.IsNotExist(err) {
-        createEtcDir()
-    }
-
-    lo.TryCatch(func() error { // try
-        request, _ := http.NewRequest("", url, nil)
-        request.Header.Set("User-Agent", UserAgent)
-        request.Header.Set(key, value)
-        resp, err := http.DefaultClient.Do(request)
-        if err != nil {
-            h.Printc("Request failed!", h.ERROR, false)
-            return fmt.Errorf("Request failed: %w", err)
-        }
-        //nolint:errcheck
-        defer resp.Body.Close()
-
-        file, fileErr := os.OpenFile(cacheFilePath, os.O_CREATE|os.O_WRONLY, 0644)
-        if fileErr != nil {
-            h.Printc("Failed to create cache file!", h.ERROR, false)
-            return fmt.Errorf("Failed to create cache file: %w", fileErr)
-        }
-        //nolint:errcheck
-        defer file.Close()
-
-        // NOTE: Might switch to "github.com/cheggaaa/pb" if this doesn't meet my needs.
-        bar := progressbar.DefaultBytes(resp.ContentLength, "Downloading...")
-        //nolint:errcheck
-        io.Copy(io.MultiWriter(file, bar), resp.Body)
-
-        return nil
-    }, func() { // catch
-        h.Printc("Unable to create cache file!", h.ERROR, false)
-        os.Exit(h.ERROR_EXIT_CODE)
-    })
-
-    if rateLimited(feedbackMsg) {
-        h.Printc("API rate limit exceeded!", h.WARNING, true)
-        h.Printc("Deleting cache file...", h.INFO, true)
-        if err := os.Remove(cacheFilePath); err != nil {
-            h.Printc(err.Error(), h.ERROR, false)
-        }
-    }
-}
-
 // rateLimited checks if the given feedback message contains a rate limit error.
 func rateLimited(feedbackMsg string) bool {
     targets := []string { "API rate limit exceeded", "API rate limit exceeded for" }
@@ -392,47 +320,6 @@ func parseJsonFile(filePath string, jsonpathExpr string) (string, error) {
     }
 
     return value, nil
-}
-
-func getWebContent(url string) ([]byte, error) {
-    result := []byte {}
-    fetchError := error (nil)
-
-    lo.TryCatch(func() error { // try
-        request, requestErr := http.NewRequest("GET", url, nil)
-        if requestErr != nil {
-            h.Printc("Failed to create HTTP request!", h.ERROR, false)
-            fetchError = fmt.Errorf("Failed to create HTTP request: %w", requestErr)
-            return fetchError
-        }
-        request.Header.Set("User-Agent", UserAgent)
-
-        resp, respErr := http.DefaultClient.Do(request)
-        if respErr != nil {
-            h.Printc("HTTP request failed!", h.ERROR, false)
-            fetchError = fmt.Errorf("HTTP request failed: %w", respErr)
-            return fetchError
-        }
-        //nolint:errcheck
-        defer resp.Body.Close()
-
-        // Read the response body
-        respBody, err := io.ReadAll(resp.Body)
-        if err != nil {
-            h.Printc("Failed to read response body!", h.ERROR, false)
-            fetchError = fmt.Errorf("Failed to read response body: %w", err)
-            return fetchError
-        }
-
-        result = respBody
-
-        return nil
-    }, func() { // catch
-        h.Printc("An unexpected error occurred!", h.ERROR, false)
-        fetchError = fmt.Errorf("An unexpected error occurred")
-    })
-
-    return result, fetchError
 }
 
 // parseJson parses JSON content and returns the matches of a given regex.
@@ -512,69 +399,6 @@ func parseYaml(content []byte, regexStr string, regexRepl string, yamlpathExpr s
     } else {
         matches := regex.ReplaceAllString(strValue, "$1")
         if regex.MatchString(strValue) { result = matches }
-    }
-
-    return result, nil
-}
-
-// parseHtml parses HTML content using XPath and returns the matches of a given regex.
-func parseHtml(content []byte, regexStr string, regexRepl string, xpathExpr string) (string, error) {
-    isHTML = true
-    result, err := parseXml(content, regexStr, regexRepl, xpathExpr)
-
-    if err != nil {
-        msg := fmt.Sprint("An error occurred:\n" + err.Error())
-        h.Printc(msg, h.ERROR, false)
-        return "", fmt.Errorf("An error occurred:\n%w", err)
-    }
-
-    return result, nil
-}
-
-// parseXml parses XML (or HTML) content using XPath and returns the matches of a given regex.
-func parseXml(content []byte, regexStr string, regexRepl string, xpathStr string) (string, error) {
-    result, innerText := "", ""
-
-    // Compile regex from string
-    regex, regexErr := regexp.Compile(regexStr)
-    if regexErr != nil {
-        h.Printc("Failed to parse regex!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse regex: %w", regexErr)
-    }
-
-    // Compile xpath from string
-    xpathExpr, xpathErr := xpath.Compile(xpathStr)
-    if xpathErr != nil {
-        h.Printc("Failed to parse xpath!", h.ERROR, false)
-        return result, fmt.Errorf("Failed to parse xpath: %w", xpathErr)
-    }
-
-    if isHTML {
-        doc, err := htmlquery.Parse(strings.NewReader(string(content)))
-        if err != nil {
-            h.Printc("Failed to parse HTML!", h.ERROR, false)
-            return result, fmt.Errorf("Failed to parse HTML: %w", err)
-        }
-
-        node := htmlquery.QuerySelector(doc, xpathExpr)
-        innerText = htmlquery.InnerText(node)
-    } else {
-        doc, err := xmlquery.Parse(strings.NewReader(string(content)))
-        if err != nil {
-            h.Printc("Failed to parse XML!", h.ERROR, false)
-            return result, fmt.Errorf("Failed to parse XML: %w", err)
-        }
-
-        node := xmlquery.QuerySelector(doc, xpathExpr)
-        innerText = node.InnerText()
-    }
-
-    if regexRepl != "" {
-        matches := regex.ReplaceAllString(innerText, regexRepl)
-        if regex.MatchString(innerText) { result = matches }
-    } else {
-        matches := regex.ReplaceAllString(innerText, "$1")
-        if regex.MatchString(innerText) { result = matches }
     }
 
     return result, nil
